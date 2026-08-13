@@ -1,7 +1,14 @@
 <?php $__env->startSection('title', 'Change Password'); ?>
 <?php $__env->startSection('heading', 'Change Password'); ?>
 <?php $__env->startSection('content'); ?>
-<div class="bg-surface border border-border rounded-2xl p-6 shadow-sm max-w-lg">
+<div class="cmc-panel max-w-lg p-6">
+    <div class="flex items-center gap-3 mb-5">
+        <span class="cmc-stat-icon"><i class="ph ph-key"></i></span>
+        <div>
+            <h2 class="text-base font-semibold text-heading m-0">Account security</h2>
+            <p class="text-xs text-muted m-0">Update your login code for this member ID</p>
+        </div>
+    </div>
     <form method="POST" action="<?php echo e(route('customer.password.update')); ?>" class="space-y-4">
         <?php echo csrf_field(); ?>
         <?php echo method_field('PUT'); ?>
@@ -18,7 +25,7 @@
             <input id="password_confirmation" type="password" name="password_confirmation" required class="w-full h-11 px-3 rounded-xl bg-subtle border border-border text-sm text-text focus:outline-none focus:border-primary">
         </div>
         <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-11 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
-            Update password
+            Update password <i class="ph ph-shield-check"></i>
         </button>
     </form>
 </div>

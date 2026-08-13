@@ -3,7 +3,10 @@
 @section('title', 'Customer Login')
 
 @section('content')
-<h2 class="text-xl font-bold text-heading text-center">Welcome back</h2>
+<div class="text-center mb-1">
+    <span class="cmc-chip"><i class="ph ph-fingerprint"></i> Member access</span>
+</div>
+<h2 class="text-xl font-bold text-heading text-center mt-3">Welcome back</h2>
 <p class="text-sm text-muted text-center mt-1">Sign in to your {{ config('citymax.name') }} account</p>
 
 @include('partials.alerts')
@@ -32,7 +35,7 @@
         <input type="checkbox" name="remember" value="1" class="accent-primary">
         <span class="text-xs text-text-secondary">Keep me signed in</span>
     </label>
-    <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
+    <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors shadow-lg shadow-primary/25">
         Sign in <i class="ph ph-arrow-right text-base"></i>
     </button>
 </form>

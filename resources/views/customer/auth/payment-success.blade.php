@@ -3,13 +3,17 @@
 @section('title', 'Registration successful')
 
 @section('content')
-<h2 class="text-xl font-bold text-heading text-center">Registration successful</h2>
+<div class="text-center">
+    <span class="cmc-stat-icon mx-auto mb-3 text-xl"><i class="ph ph-check-circle"></i></span>
+    <span class="cmc-chip"><i class="ph ph-check-circle"></i> Payment received</span>
+</div>
+<h2 class="text-xl font-bold text-heading text-center mt-3">Registration successful</h2>
 <p class="text-sm text-muted text-center mt-2">
     Your account will be activated within an hour. Login ID and Password will be sent to your registered email address after activation.
 </p>
 
 @if ($transaction && $transaction->status === 'completed' && ! empty($transaction->meta['credentials_token']))
-    <a href="{{ route('credentials.show', ['token' => $transaction->meta['credentials_token']]) }}" class="mt-6 w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
+    <a href="{{ route('credentials.show', ['token' => $transaction->meta['credentials_token']]) }}" class="mt-6 w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors shadow-lg shadow-primary/25">
         View login details <i class="ph ph-arrow-right text-base"></i>
     </a>
 @elseif ($transaction && $transaction->status === 'failed')

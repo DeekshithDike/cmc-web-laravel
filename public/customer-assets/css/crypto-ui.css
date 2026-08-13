@@ -1,0 +1,406 @@
+/* City Max Crypto — customer UI (brand blues, no PNG banners) */
+
+/* Light mode: soft blue wash + modern grid pattern (not flat white) */
+html:not(.dark) body.cmc-shell,
+html:not(.dark) body.cmc-guest-body {
+  --cmc-canvas: #e8f1f9;
+  --cmc-canvas-2: #d7e8f6;
+  --cmc-panel: rgba(255, 255, 255, 0.72);
+  --cmc-panel-solid: #f4f9fd;
+  --cmc-line: color-mix(in srgb, var(--color-primary) 16%, #c5d6e6);
+  background-color: var(--cmc-canvas);
+  background-image:
+    radial-gradient(ellipse 90% 60% at 10% -10%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, color-mix(in srgb, #38bdf8 18%, transparent), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 55%),
+    linear-gradient(var(--cmc-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cmc-line) 1px, transparent 1px);
+  background-size: auto, auto, auto, 28px 28px, 28px 28px;
+  background-attachment: fixed;
+}
+
+html.dark body.cmc-shell,
+html.dark body.cmc-guest-body {
+  --cmc-panel: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  --cmc-panel-solid: var(--color-surface);
+  --cmc-line: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.cmc-ambient {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.cmc-ambient::before,
+.cmc-ambient::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+}
+.cmc-ambient::before {
+  width: 26rem;
+  height: 26rem;
+  top: -6rem;
+  right: -4rem;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 50%, transparent), transparent 70%);
+}
+.cmc-ambient::after {
+  width: 20rem;
+  height: 20rem;
+  bottom: 8%;
+  left: -6rem;
+  background: radial-gradient(circle, color-mix(in srgb, #38bdf8 35%, transparent), transparent 70%);
+}
+.dark .cmc-ambient::before { opacity: 0.3; }
+.dark .cmc-ambient::after { opacity: 0.22; }
+
+.cmc-page-enter {
+  animation: cmcFadeUp 0.4s var(--ease-out, ease) both;
+}
+@keyframes cmcFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cmc-hero-wallet {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 92%, #024a7a), color-mix(in srgb, var(--color-primary-strong) 80%, #033a5c) 55%, #0a2740);
+  color: #fff;
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--color-primary) 26%, transparent);
+}
+.cmc-hero-wallet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 85% 15%, rgba(255, 255, 255, 0.2), transparent 42%),
+    radial-gradient(ellipse at 12% 90%, rgba(56, 189, 248, 0.32), transparent 48%),
+    linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
+  pointer-events: none;
+}
+.cmc-hero-wallet > * { position: relative; z-index: 1; }
+
+.cmc-stat-card,
+.cmc-panel,
+.cmc-quick-link {
+  border-radius: 1rem;
+  border: 1px solid var(--cmc-line, color-mix(in srgb, var(--color-primary) 14%, #d0dbe6));
+  background: var(--cmc-panel, var(--color-surface));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px rgb(14 40 70 / 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.dark .cmc-stat-card,
+.dark .cmc-panel,
+.dark .cmc-quick-link {
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.28);
+}
+
+.cmc-stat-card { overflow: hidden; }
+.cmc-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
+  box-shadow: 0 14px 30px rgb(14 40 70 / 0.1);
+}
+
+.cmc-stat-icon,
+.cmc-ql-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--color-primary) 18%, transparent), color-mix(in srgb, var(--color-primary) 6%, transparent));
+  color: var(--color-primary);
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+.cmc-ql-icon { width: 2.75rem; height: 2.75rem; font-size: 1.35rem; border-radius: 0.9rem; }
+
+.cmc-stat-card.is-accent .cmc-stat-icon {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+.cmc-stat-card.is-warn .cmc-stat-icon {
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  color: #b38600;
+}
+.dark .cmc-stat-card.is-warn .cmc-stat-icon { color: var(--color-warning); }
+
+.cmc-quick-link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+}
+.cmc-quick-link:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--cmc-panel, var(--color-surface)));
+  transform: translateY(-1px);
+}
+
+.cmc-panel { border-radius: 1.25rem; overflow: hidden; }
+.cmc-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--cmc-line, color-mix(in srgb, var(--color-primary) 12%, transparent));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent);
+}
+
+.cmc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary-strong);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.cmc-guest-stage {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  overflow: hidden;
+}
+.cmc-guest-card {
+  position: relative;
+  z-index: 1;
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
+  background: var(--cmc-panel, rgba(255, 255, 255, 0.8));
+  backdrop-filter: blur(16px);
+  box-shadow: 0 22px 50px rgb(14 40 70 / 0.12);
+}
+.dark .cmc-guest-card {
+  box-shadow: 0 22px 50px rgb(0 0 0 / 0.45);
+}
+
+.cmc-float-ico {
+  position: absolute;
+  z-index: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  opacity: 0.7;
+  animation: cmcFloat 7s ease-in-out infinite;
+}
+.cmc-float-ico:nth-of-type(2) { animation-delay: -2.2s; opacity: 0.55; }
+.cmc-float-ico:nth-of-type(3) { animation-delay: -4.1s; opacity: 0.5; }
+@keyframes cmcFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Soft glass topbar in light mode */
+html:not(.dark) #topbar {
+  background: color-mix(in srgb, #f0f7fc 82%, transparent) !important;
+  border-bottom-color: color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.cmc-refresh-btn {
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent) !important;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent) !important;
+  color: var(--color-primary-strong) !important;
+}
+.cmc-refresh-btn:hover {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+.cmc-refresh-btn:active i {
+  animation: cmcSpin 0.45s linear;
+}
+@keyframes cmcSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Customer sidebar — open modern nav (no boxed square) */
+#sidebar,
+#mobile-sidebar {
+  background:
+    radial-gradient(ellipse 110% 55% at 0% -5%, color-mix(in srgb, var(--color-primary) 42%, transparent), transparent 58%),
+    radial-gradient(ellipse 80% 45% at 120% 110%, color-mix(in srgb, #38bdf8 18%, transparent), transparent 55%),
+    linear-gradient(180deg, #0c1f38 0%, #0a1628 48%, #07101c 100%) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 22%, transparent) !important;
+  box-shadow: 10px 0 36px rgb(5 30 60 / 0.2);
+  color: #e8f2fc;
+  overflow: hidden;
+}
+#sidebar::before,
+#mobile-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 42%),
+    radial-gradient(circle at 85% 78%, color-mix(in srgb, #38bdf8 10%, transparent), transparent 40%);
+  opacity: 1;
+  z-index: 0;
+}
+#sidebar > *,
+#mobile-sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+#sidebar .nav-section,
+#mobile-sidebar .nav-section {
+  color: color-mix(in srgb, var(--color-primary-strong) 70%, #9ec9ef) !important;
+  letter-spacing: 0.11em;
+  padding-left: 0.85rem !important;
+  opacity: 0.9;
+}
+
+#sidebar nav,
+#mobile-sidebar nav {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#sidebar nav > div,
+#mobile-sidebar nav > div,
+#sidebar nav .space-y-4,
+#sidebar nav .space-y-1 {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#sidebar .cmc-nav-group,
+#mobile-sidebar .cmc-nav-group {
+  margin-bottom: 1.1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+#sidebar .cmc-nav-group + .cmc-nav-group,
+#mobile-sidebar .cmc-nav-group + .cmc-nav-group {
+  padding-top: 0.35rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-primary) 14%, transparent);
+  margin-top: 0.15rem;
+}
+
+#sidebar nav .nav-item,
+#mobile-sidebar nav .mobile-nav-item {
+  color: #c5d7eb !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  position: relative;
+  margin: 0.15rem 0;
+}
+#sidebar nav .nav-item i,
+#mobile-sidebar nav .mobile-nav-item i {
+  color: color-mix(in srgb, var(--color-primary) 72%, #9ec4e4);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+#sidebar nav .nav-item:hover,
+#mobile-sidebar nav .mobile-nav-item:hover {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
+  color: #fff !important;
+}
+#sidebar nav .nav-item:hover i,
+#mobile-sidebar nav .mobile-nav-item:hover i {
+  color: var(--color-primary-strong) !important;
+  transform: translateX(1px) scale(1.04);
+}
+
+#sidebar nav .nav-item.active,
+#sidebar nav .nav-item.is-active,
+#sidebar nav .nav-item.active:hover,
+#sidebar nav .nav-item.is-active:hover,
+#mobile-sidebar nav .mobile-nav-item.active,
+#mobile-sidebar nav .mobile-nav-item.is-active,
+#mobile-sidebar nav .mobile-nav-item.active:hover,
+#mobile-sidebar nav .mobile-nav-item.is-active:hover {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 88%, #0369a1), color-mix(in srgb, var(--color-primary) 55%, transparent)) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+#sidebar nav .nav-item.active::before,
+#sidebar nav .nav-item.is-active::before,
+#mobile-sidebar nav .mobile-nav-item.active::before,
+#mobile-sidebar nav .mobile-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 10px color-mix(in srgb, #fff 55%, var(--color-primary));
+}
+#sidebar nav .nav-item.active i,
+#sidebar nav .nav-item.is-active i,
+#mobile-sidebar nav .mobile-nav-item.active i,
+#mobile-sidebar nav .mobile-nav-item.is-active i {
+  color: #fff !important;
+}
+
+#sidebar .border-border-subtle,
+#sidebar .border-border,
+#mobile-sidebar .border-border,
+#mobile-sidebar .border-border-subtle {
+  border-color: color-mix(in srgb, var(--color-primary) 16%, transparent) !important;
+}
+
+#sidebar .sidebar-toggle-btn:hover,
+#mobile-sidebar button:hover {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent) !important;
+  color: #fff !important;
+}
+
+#sidebar .cmc-side-user {
+  margin: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 18%, transparent), color-mix(in srgb, #38bdf8 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+#sidebar .cmc-side-user .cmc-avatar {
+  background: linear-gradient(145deg, var(--color-primary), #0369a1) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmc-page-enter,
+  .cmc-float-ico,
+  .cmc-stat-card,
+  .cmc-quick-link,
+  #sidebar nav .nav-item i,
+  #mobile-sidebar nav .mobile-nav-item i { animation: none; transition: none; }
+}

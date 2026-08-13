@@ -91,12 +91,14 @@
     };
 ?>
 
-<div class="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm">
+<div class="cmc-panel p-4 sm:p-6">
     <div class="text-center mb-4">
         <?php if($isOwnTree): ?>
+            <span class="cmc-chip mb-2"><i class="ph ph-tree-structure"></i> Your network</span>
             <h3 class="text-lg font-semibold text-success mt-0 mb-1">Your ID: <?php echo e($parentId); ?></h3>
             <p class="text-sm text-muted"><?php echo e($parentName); ?></p>
         <?php else: ?>
+            <span class="cmc-chip mb-2"><i class="ph ph-users-three"></i> Team view</span>
             <h3 class="text-lg font-semibold text-heading mt-0 mb-1">ID: <?php echo e($parentId); ?></h3>
             <p class="text-sm text-muted"><?php echo e($parentName); ?></p>
         <?php endif; ?>

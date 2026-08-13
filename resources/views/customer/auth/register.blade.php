@@ -3,13 +3,18 @@
 @section('title', 'Register')
 
 @section('content')
-<h2 class="text-xl font-bold text-heading text-center">{{ $heading ?? 'Join '.config('citymax.name') }}</h2>
+<div class="text-center mb-1">
+    <span class="cmc-chip"><i class="ph ph-rocket-launch"></i> {{ $powerId ? 'Power ID' : 'Invite join' }}</span>
+</div>
+<h2 class="text-xl font-bold text-heading text-center mt-3">{{ $heading ?? 'Join '.config('citymax.name') }}</h2>
 <p class="text-sm text-muted text-center mt-1">{{ $powerId ? 'Pay to activate this reserved Power ID' : 'Complete your invite registration' }}</p>
 
 @include('partials.alerts')
 
-<div class="mt-4 rounded-xl bg-subtle border border-border p-3 text-xs text-text-secondary">
-    Placement <strong>#{{ $placementId }}</strong> · {{ ucfirst($position) }} · Sponsor <strong>#{{ $sponsorId }}</strong>
+<div class="mt-4 rounded-xl bg-primary/5 border border-primary/20 p-3 text-xs text-text-secondary flex flex-wrap gap-x-3 gap-y-1 justify-center">
+    <span><i class="ph ph-map-pin text-primary"></i> Placement <strong>#{{ $placementId }}</strong></span>
+    <span><i class="ph ph-arrows-left-right text-primary"></i> {{ ucfirst($position) }}</span>
+    <span><i class="ph ph-user text-primary"></i> Sponsor <strong>#{{ $sponsorId }}</strong></span>
 </div>
 
 <form class="space-y-3 mt-4" method="POST" action="{{ $formAction ?? route('customer.register.save') }}">
@@ -41,7 +46,7 @@
             @endforeach
         </select>
     </div>
-    <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors mt-2">
+    <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors mt-2 shadow-lg shadow-primary/25">
         Continue to payment <i class="ph ph-arrow-right text-base"></i>
     </button>
 </form>
