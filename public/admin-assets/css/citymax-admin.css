@@ -1,0 +1,27 @@
+:root {
+  --cmc-navy: #0a1628;
+  --cmc-accent: #00a3ff;
+  --cmc-font: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+body,
+h1, h2, h3, h4, h5, h6,
+.navbar-default,
+.nav,
+.ibox,
+.btn,
+.form-control {
+  font-family: var(--cmc-font) !important;
+}
+body { background: #eef3f9 !important; }
+.navbar-default.navbar-static-side,
+.nav-header { background: linear-gradient(180deg, #0a1628 0%, #07101f 100%) !important; }
+.navbar-default .nav > li > a { color: #b8c9de !important; }
+.navbar-default .nav > li.active > a,
+.navbar-default .nav > li > a:hover { background: rgba(0,163,255,.14) !important; color: #fff !important; }
+.nav-header .text-muted { color: #7f94b0 !important; }
+#page-wrapper { background: #eef3f9; }
+.ibox { border-radius: 10px; overflow: hidden; border: 1px solid #dde5f0; box-shadow: 0 6px 18px rgba(10,22,40,.05); }
+.ibox-title { background: #fff; border-bottom: 1px solid #e6edf6; }
+.btn-primary, .btn-info { background: #00a3ff !important; border-color: #00a3ff !important; }
+.gray-bg { background: #eef3f9 !important; }
+.navbar-minimalize { background: #00a3ff !important; border-color: #00a3ff !important; }

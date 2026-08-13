@@ -1,0 +1,6 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "name": "cmc-web-laravel",
+    "private": true,
+    "description": "City Max Crypto web UI uses static assets under public/ (no Vite build step)."
+}
