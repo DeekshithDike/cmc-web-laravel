@@ -74,12 +74,14 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
             }
 
             $ipnUrl = route('webhooks.payouts.handle', ['provider' => PaymentProvider::NowPayments->value]);
+            $cryptoAmount = round($amount, 6);
+            $fiatAmount = round($amount, 2);
             $response = $this->client->createPayout([
                 [
                     'address' => $withdrawal->wallet_address,
                     'currency' => $currency,
-                    'amount' => $amount,
-                    'fiat_amount' => $amount,
+                    'amount' => $cryptoAmount,
+                    'fiat_amount' => $fiatAmount,
                     'fiat_currency' => $fiatCurrency,
                     'ipn_callback_url' => $ipnUrl,
                     'extra_id' => (string) $withdrawal->id,

@@ -15,9 +15,10 @@ interface PaymentGatewayInterface
     public function provider(): PaymentProvider;
 
     /**
+     * @param  array<string, mixed>  $meta
      * @return array{transaction: PaymentTransaction, redirect_url?: string|null, message?: string}
      */
-    public function initiate(User $user, float $amount, array $meta = []): array;
+    public function initiate(?User $user, float $amount, array $meta = []): array;
 
     public function confirm(PaymentTransaction $transaction, array $payload = []): PaymentTransaction;
 

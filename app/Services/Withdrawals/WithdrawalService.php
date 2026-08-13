@@ -6,6 +6,7 @@ use App\Enums\PaymentProvider;
 use App\Enums\WithdrawalStatus;
 use App\Models\User;
 use App\Models\Withdrawal;
+use App\Support\UsdtWalletAddress;
 use App\Services\Payouts\PayoutGatewayManager;
 use App\Services\Wallet\WalletService;
 use Illuminate\Support\Facades\DB;
@@ -29,8 +30,8 @@ class WithdrawalService
         }
 
         $walletAddress = trim($walletAddress);
-        if (strlen($walletAddress) < 10) {
-            throw new InvalidArgumentException('Wallet address looks too short.');
+        if (! UsdtWalletAddress::isEvm($walletAddress)) {
+            throw new InvalidArgumentException('Wallet address must be a USDT ERC-20 or BEP-20 address (0x followed by 40 hex characters).');
         }
 
         return DB::transaction(function () use ($user, $amount, $walletAddress, $fee) {

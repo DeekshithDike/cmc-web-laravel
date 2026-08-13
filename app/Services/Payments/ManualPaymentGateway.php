@@ -15,11 +15,11 @@ class ManualPaymentGateway implements PaymentGatewayInterface
         return PaymentProvider::Manual;
     }
 
-    public function initiate(User $user, float $amount, array $meta = []): array
+    public function initiate(?User $user, float $amount, array $meta = []): array
     {
         $transaction = PaymentTransaction::query()->create([
-            'user_id' => $user->id,
-            'package_id' => $meta['package_id'] ?? $user->package_id,
+            'user_id' => $user?->id,
+            'package_id' => $meta['package_id'] ?? $user?->package_id,
             'provider' => PaymentProvider::Manual,
             'provider_ref' => 'MAN-'.uniqid(),
             'amount' => number_format($amount, 2, '.', ''),

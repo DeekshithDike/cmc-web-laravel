@@ -29,20 +29,20 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
         return PaymentProvider::NowPayments;
     }
 
-    public function initiate(User $user, float $amount, array $meta = []): array
+    public function initiate(?User $user, float $amount, array $meta = []): array
     {
-        $orderId = 'CMC-'.$user->id.'-'.uniqid();
+        $orderId = (string) ($meta['order_id'] ?? ('CMC-'.($user?->id ?? 'INV').'-'.uniqid()));
         $currency = strtoupper($meta['currency'] ?? config('payments.nowpayments.price_currency'));
 
         $transaction = PaymentTransaction::query()->create([
-            'user_id' => $user->id,
-            'package_id' => $meta['package_id'] ?? $user->package_id,
+            'user_id' => $user?->id,
+            'package_id' => $meta['package_id'] ?? $user?->package_id,
             'provider' => PaymentProvider::NowPayments,
             'provider_ref' => $orderId,
             'amount' => number_format($amount, 2, '.', ''),
             'currency' => $currency,
             'status' => 'pending',
-            'meta' => $meta,
+            'meta' => array_merge($meta, ['order_id' => $orderId]),
         ]);
 
         if (! $this->client->configured()) {
@@ -133,21 +133,22 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
     public function findWebhookTransaction(Request $request): ?PaymentTransaction
     {
         $orderId = (string) ($request->input('order_id') ?? '');
-        $paymentId = (string) ($request->input('payment_id') ?? $request->input('invoice_id') ?? '');
+        $invoiceId = (string) ($request->input('invoice_id') ?? '');
+        $paymentId = (string) ($request->input('payment_id') ?? '');
         $purchaseId = (string) ($request->input('purchase_id') ?? '');
+
+        $refs = array_values(array_unique(array_filter(
+            [$orderId, $invoiceId, $paymentId, $purchaseId],
+            fn (string $value) => $value !== '' && $value !== '0'
+        )));
 
         $query = PaymentTransaction::query()->where('provider', PaymentProvider::NowPayments);
 
-        if ($orderId !== '') {
-            $byOrder = (clone $query)->where('provider_ref', $orderId)->first()
-                ?? (clone $query)->where('meta->order_id', $orderId)->first();
-            if ($byOrder) {
-                return $byOrder;
-            }
-        }
+        foreach ($refs as $ref) {
+            $found = (clone $query)->where('provider_ref', $ref)->first()
+                ?? (clone $query)->where('meta->order_id', $ref)->first()
+                ?? (clone $query)->where('meta->invoice->id', $ref)->first();
 
-        foreach (array_filter([$paymentId, $purchaseId]) as $ref) {
-            $found = (clone $query)->where('provider_ref', $ref)->first();
             if ($found) {
                 return $found;
             }

@@ -32,8 +32,10 @@ class LandingPageTest extends TestCase
             $response->assertSee('$'.number_format($amount), false);
         }
         $response->assertSee('1% daily', false);
-        $response->assertSee('10% instant', false);
-        $response->assertSee('10% commission', false);
+        $response->assertSee('Tuesday through Saturday', false);
+        $response->assertSee('Tue–Sat', false);
+        $response->assertSee('10% daily', false);
+        $response->assertSee('5% matching', false);
         $response->assertSee('USDT (ERC20)', false);
         $response->assertSee('support@citymaxcrypto.com', false);
         $response->assertSee('landing/css/landing.css', false);

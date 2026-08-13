@@ -5,12 +5,14 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Enums\WithdrawalStatus;
+use App\Mail\MemberCredentialsMail;
 use App\Models\BinaryTree;
 use App\Models\Package;
 use App\Models\User;
 use App\Models\Withdrawal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class MembershipAndWithdrawalTest extends TestCase
@@ -60,6 +62,7 @@ class MembershipAndWithdrawalTest extends TestCase
         Http::fake([
             '*/internal/jobs/place-member*' => Http::response(['ok' => true, 'jobId' => 'x'], 202),
         ]);
+        Mail::fake();
 
         ['admin' => $admin, 'root' => $root, 'package' => $package] = $this->seedRoot();
 
@@ -76,6 +79,19 @@ class MembershipAndWithdrawalTest extends TestCase
 
         $this->assertDatabaseHas('users', ['email' => 'child@test.com', 'parent_id' => $root->id]);
         $this->assertDatabaseHas('binary_trees', ['users_id' => $root->id, 'left_user_id' => User::where('email', 'child@test.com')->value('id')]);
+        Mail::assertSent(MemberCredentialsMail::class, function (MemberCredentialsMail $mail) {
+            return $mail->hasTo('child@test.com');
+        });
+    }
+
+    public function test_withdrawal_rejects_non_evm_usdt_address(): void
+    {
+        ['root' => $root] = $this->seedRoot();
+
+        $this->actingAs($root)->from(route('customer.withdrawals.create'))->post(route('customer.withdrawals.store'), [
+            'amount' => 25,
+            'wallet_address' => 'TEmGwPeRTPiLFLVfBxXkSP91yc5GMNQhfS',
+        ])->assertRedirect()->assertSessionHas('error');
     }
 
     public function test_customer_can_request_and_admin_can_complete_withdrawal(): void
@@ -84,7 +100,7 @@ class MembershipAndWithdrawalTest extends TestCase
 
         $this->actingAs($root)->post(route('customer.withdrawals.store'), [
             'amount' => 25,
-            'wallet_address' => '0xabc1234567',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
         ])->assertRedirect(route('customer.withdrawals.history'));
 
         $withdrawal = Withdrawal::query()->first();

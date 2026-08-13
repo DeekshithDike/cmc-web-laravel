@@ -22,7 +22,8 @@ return [
 
     'income' => [
         'referral_percent' => (float) env('INCOME_REFERRAL_PERCENT', 10),
-        'binary_percent' => (float) env('INCOME_BINARY_PERCENT', 10),
+        'binary_percent' => (float) env('INCOME_BINARY_PERCENT', 5),
+        'binary_max' => (float) env('INCOME_BINARY_MAX', 500),
         'run_at' => env('INCOME_RUN_AT', '00:05'),
     ],
 

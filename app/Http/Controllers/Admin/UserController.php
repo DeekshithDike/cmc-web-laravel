@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Models\User;
+use App\Services\Auth\MemberCredentialsNotifier;
 use App\Services\Membership\MembershipService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request, MembershipService $membership): RedirectResponse
+    public function store(Request $request, MembershipService $membership, MemberCredentialsNotifier $credentials): RedirectResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:60'],
@@ -64,6 +65,8 @@ class UserController extends Controller
         } catch (InvalidArgumentException|Throwable $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
+
+        $credentials->email($user);
 
         return $this->redirectToOneTimeCredentials((int) $user->id, (string) $user->plain_password);
     }

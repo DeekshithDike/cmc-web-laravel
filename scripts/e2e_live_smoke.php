@@ -135,6 +135,27 @@ check('Customer login page', $customerLogin['status'] === 200 && str_contains($c
 $up = http('GET', rtrim($web, '/').'/up');
 check('Laravel /up health', $up['status'] === 200, 'status='.$up['status']);
 
+$paySuccess = http('GET', rtrim($web, '/').'/customer/payment/success');
+check(
+    'Payment success page',
+    $paySuccess['status'] === 200 && str_contains($paySuccess['body'], 'Registration successful'),
+    'status='.$paySuccess['status']
+);
+
+$payCancel = http('GET', rtrim($web, '/').'/customer/payment/cancel');
+check(
+    'Payment cancel page',
+    $payCancel['status'] === 200 && str_contains($payCancel['body'], 'Signup again using the link'),
+    'status='.$payCancel['status']
+);
+
+$registerBare = http('GET', rtrim($web, '/').'/customer/register');
+check(
+    'Register without invite redirects',
+    in_array($registerBare['status'], [301, 302], true),
+    'status='.$registerBare['status']
+);
+
 echo PHP_EOL.'=== Summary ==='.PHP_EOL;
 $total = count($results);
 $passed = $total - $failed;

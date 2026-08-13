@@ -14,6 +14,7 @@ use App\Models\Withdrawal;
 use App\Services\Income\DailyIncomeService;
 use App\Services\Payments\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -33,6 +34,8 @@ class EndToEndJourneyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Carbon::setTestNow('2026-08-14 12:00:00');
 
         Http::fake([
             '*/internal/jobs/place-member*' => Http::response(['ok' => true, 'jobId' => 'e2e-place'], 202),
@@ -78,6 +81,12 @@ class EndToEndJourneyTest extends TestCase
         ]);
 
         BinaryTree::query()->create(['users_id' => $this->root->id]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_full_platform_journey(): void
@@ -129,7 +138,7 @@ class EndToEndJourneyTest extends TestCase
             'sponsorID' => $this->root->id,
         ]))->assertOk()->assertSee('City Max Crypto', false);
 
-        $this->assertRedirectedToCredentials(
+        $this->assertRedirectedToPaymentCheckout(
             $this->post(route('customer.register.save'), [
                 'name' => 'E2E Invitee',
                 'email' => 'e2e-invitee@citymaxcrypto.com',
@@ -142,20 +151,27 @@ class EndToEndJourneyTest extends TestCase
             ])
         );
 
-        $invitee = User::query()->where('email', 'e2e-invitee@citymaxcrypto.com')->first();
-        $this->assertNotNull($invitee);
+        $this->assertNull(User::query()->where('email', 'e2e-invitee@citymaxcrypto.com')->first());
         $this->assertDatabaseHas('payment_transactions', [
-            'user_id' => $invitee->id,
+            'user_id' => null,
             'provider' => PaymentProvider::Manual->value,
             'status' => 'pending',
         ]);
 
-        // 5) Manual payment confirm → calc place-member
-        $tx = PaymentTransaction::query()->where('user_id', $invitee->id)->firstOrFail();
+        // 5) Manual payment confirm → create user, occupy seat, calc place-member
+        $tx = PaymentTransaction::query()->latest('id')->firstOrFail();
         $this->actingAs($this->admin)
             ->post(route('admin.payments.confirm', $tx))
             ->assertRedirect();
         $this->assertSame('completed', $tx->fresh()->status);
+
+        $invitee = User::query()->where('email', 'e2e-invitee@citymaxcrypto.com')->first();
+        $this->assertNotNull($invitee);
+        $this->assertTrue((bool) $invitee->is_active);
+        $this->assertDatabaseHas('binary_trees', [
+            'users_id' => $this->root->id,
+            'right_user_id' => $invitee->id,
+        ]);
         $this->assertDatabaseHas('calculation_jobs', ['job_type' => 'place-member']);
 
         // 6) NOWPayments receive stub + IPN
@@ -205,7 +221,7 @@ class EndToEndJourneyTest extends TestCase
         config(['payments.default_payout' => 'manual']);
         $this->actingAs($this->root)->post(route('customer.withdrawals.store'), [
             'amount' => 25,
-            'wallet_address' => '0xabc1234567890def',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
         ])->assertRedirect(route('customer.withdrawals.history'));
 
         $withdrawal = Withdrawal::query()->latest('id')->firstOrFail();
@@ -224,7 +240,7 @@ class EndToEndJourneyTest extends TestCase
         $this->root->save();
         $this->actingAs($this->root)->post(route('customer.withdrawals.store'), [
             'amount' => 25,
-            'wallet_address' => 'TEmGwPeRTPiLFLVfBxXkSP91yc5GMNQhfS',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
         ])->assertRedirect();
         $npWd = Withdrawal::query()->latest('id')->firstOrFail();
         $this->actingAs($this->admin)->post(route('admin.withdrawals.complete', $npWd))->assertRedirect();
@@ -268,7 +284,7 @@ class EndToEndJourneyTest extends TestCase
     {
         $this->actingAs($this->root)->post(route('customer.withdrawals.store'), [
             'amount' => 30,
-            'wallet_address' => '0xdecline123456',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
         ])->assertRedirect();
 
         $wd = Withdrawal::query()->latest('id')->firstOrFail();

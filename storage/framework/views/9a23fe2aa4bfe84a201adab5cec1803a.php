@@ -1,8 +1,8 @@
 <?php $__env->startSection('title', 'Register'); ?>
 
 <?php $__env->startSection('content'); ?>
-<h2 class="text-xl font-bold text-heading text-center">Join <?php echo e(config('citymax.name')); ?></h2>
-<p class="text-sm text-muted text-center mt-1">Complete your invite registration</p>
+<h2 class="text-xl font-bold text-heading text-center"><?php echo e($heading ?? 'Join '.config('citymax.name')); ?></h2>
+<p class="text-sm text-muted text-center mt-1"><?php echo e($powerId ? 'Pay to activate this reserved Power ID' : 'Complete your invite registration'); ?></p>
 
 <?php echo $__env->make('partials.alerts', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
@@ -10,7 +10,7 @@
     Placement <strong>#<?php echo e($placementId); ?></strong> · <?php echo e(ucfirst($position)); ?> · Sponsor <strong>#<?php echo e($sponsorId); ?></strong>
 </div>
 
-<form class="space-y-3 mt-4" method="POST" action="<?php echo e(route('customer.register.save')); ?>">
+<form class="space-y-3 mt-4" method="POST" action="<?php echo e($formAction ?? route('customer.register.save')); ?>">
     <?php echo csrf_field(); ?>
     <input type="hidden" name="parent_id" value="<?php echo e($placementId); ?>">
     <input type="hidden" name="position" value="<?php echo e($position); ?>">
@@ -40,7 +40,7 @@
         </select>
     </div>
     <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors mt-2">
-        Create account <i class="ph ph-arrow-right text-base"></i>
+        Continue to payment <i class="ph ph-arrow-right text-base"></i>
     </button>
 </form>
 <?php $__env->stopSection(); ?>

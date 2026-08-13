@@ -81,7 +81,7 @@ class PaymentGatewayScenariosTest extends TestCase
     private function signedIpn(array $payload, string $secret = 'ipn-secret'): array
     {
         ksort($payload);
-        $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $sig = hash_hmac('sha512', $body, $secret);
 
         return [$body, $sig];
@@ -325,6 +325,33 @@ class PaymentGatewayScenariosTest extends TestCase
         $this->assertTrue((bool) $user->fresh()->payment_status);
     }
 
+    public function test_repeated_deposit_ipn_is_ignored(): void
+    {
+        $this->enableLiveNowPaymentsReceive();
+        config(['payments.nowpayments.api_key' => null]);
+
+        $user = $this->createAwaitingMember('redeposit@test.com');
+        $tx = app(PaymentService::class)->start($user, 100, PaymentProvider::NowPayments)['transaction'];
+
+        config([
+            'payments.nowpayments.api_key' => 'live-key',
+            'payments.nowpayments.ipn_secret' => 'ipn-secret',
+        ]);
+
+        $this->postSignedPaymentIpn([
+            'payment_id' => 999,
+            'parent_payment_id' => 111,
+            'invoice_id' => null,
+            'payment_status' => 'finished',
+            'order_id' => $tx->meta['order_id'] ?? $tx->provider_ref,
+            'price_amount' => 100,
+            'price_currency' => 'usd',
+        ])->assertOk()->assertJson(['ok' => true, 'status' => 'ignored_redeposit']);
+
+        $this->assertSame('pending', $tx->fresh()->status);
+        $this->assertFalse((bool) $user->fresh()->payment_status);
+    }
+
     public function test_invalid_signature_and_unknown_order_rejected(): void
     {
         $this->enableLiveNowPaymentsReceive();
@@ -455,45 +482,52 @@ class PaymentGatewayScenariosTest extends TestCase
             ], 201),
         ]);
 
-        $response = $this->post(route('customer.register.save'), [
-            'name' => 'Invitee Live',
-            'email' => 'invitee-live@test.com',
-            'phone' => '111',
-            'country' => 'US',
-            'sponsor_id' => $this->root->id,
-            'parent_id' => $this->root->id,
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
             'position' => 'right',
-            'package_id' => $this->package->id,
-        ]);
+            'sponsorID' => $this->root->id,
+        ]))->assertOk();
 
-        $location = $this->assertRedirectedToCredentials($response);
-        $this->get($location)
-            ->assertOk()
-            ->assertSee('https://nowpayments.io/payment/?iid=reg-inv-9', false)
-            ->assertSee((string) User::query()->where('email', 'invitee-live@test.com')->value('id'), false);
+        $this->assertRedirectedToPaymentCheckout(
+            $this->post(route('customer.register.save'), [
+                'name' => 'Invitee Live',
+                'email' => 'invitee-live@test.com',
+                'phone' => '111',
+                'country' => 'US',
+                'sponsor_id' => $this->root->id,
+                'parent_id' => $this->root->id,
+                'position' => 'right',
+                'package_id' => $this->package->id,
+            ])
+        );
 
-        $user = User::query()->where('email', 'invitee-live@test.com')->firstOrFail();
-        $this->assertFalse((bool) $user->payment_status);
-        $this->assertFalse((bool) $user->is_active);
+        $this->assertNull(User::query()->where('email', 'invitee-live@test.com')->first());
+        $this->assertNull(BinaryTree::query()->where('users_id', $this->root->id)->value('right_user_id'));
         $this->assertDatabaseHas('payment_transactions', [
-            'user_id' => $user->id,
+            'user_id' => null,
             'provider' => 'nowpayments',
             'provider_ref' => 'reg-inv-9',
             'status' => 'pending',
         ]);
+
+        $tx = PaymentTransaction::query()->where('provider_ref', 'reg-inv-9')->firstOrFail();
+        $this->postSignedPaymentIpn([
+            'payment_id' => 222,
+            'invoice_id' => 'reg-inv-9',
+            'payment_status' => 'finished',
+            'order_id' => $tx->meta['order_id'] ?? $tx->provider_ref,
+            'price_amount' => 100,
+            'price_currency' => 'usd',
+        ])->assertOk()->assertJson(['ok' => true, 'status' => 'completed']);
+
+        $user = User::query()->where('email', 'invitee-live@test.com')->firstOrFail();
+        $this->assertTrue((bool) $user->payment_status);
+        $this->assertTrue((bool) $user->is_active);
         $this->assertDatabaseHas('binary_trees', [
             'users_id' => $this->root->id,
             'right_user_id' => $user->id,
         ]);
-
-        // Login blocked until paid (set known password to isolate payment gate, not credential hash)
-        $user->password = 'Customer@123';
-        $user->save();
-
-        $this->post(route('customer.login.submit'), [
-            'login_id' => $user->id,
-            'password' => 'Customer@123',
-        ])->assertSessionHasErrors(['login_id']);
+        $this->assertSame($user->id, $tx->fresh()->user_id);
     }
 
     public function test_manual_confirm_twice_does_not_double_dispatch(): void
@@ -571,7 +605,7 @@ class PaymentGatewayScenariosTest extends TestCase
         ]);
 
         $before = (float) $this->root->wallet_balance;
-        app(WithdrawalService::class)->request($this->root, 25, 'TEmGwPeRTPiLFLVfBxXkSP91yc5GMNQhfS');
+        app(WithdrawalService::class)->request($this->root, 25, self::USDT_EVM_ADDRESS);
         $wd = Withdrawal::query()->latest('id')->firstOrFail();
         $afterDebit = (float) $this->root->fresh()->wallet_balance;
         $this->assertEqualsWithDelta($before - 25, $afterDebit, 0.01);

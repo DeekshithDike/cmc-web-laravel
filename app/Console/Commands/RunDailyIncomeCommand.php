@@ -7,15 +7,21 @@ use Illuminate\Console\Command;
 
 class RunDailyIncomeCommand extends Command
 {
-    protected $signature = 'income:daily {--as-of= : Pay date YYYY-MM-DD (defaults to today)}';
+    protected $signature = 'income:daily';
 
-    protected $description = 'Pay daily ROI and binary matching (Laravel owns money; Node calc stays notify-only).';
+    protected $description = 'Pay yesterday ROI, binary, and referral. Skips if that day was already calculated.';
 
     public function handle(DailyIncomeService $income): int
     {
-        $result = $income->run($this->option('as-of') ?: null);
+        $result = $income->run(null, 'cron');
 
-        $this->info("Daily income {$result['asOf']}: {$result['processed']} members, \${$result['total']} paid.");
+        if ($result['skipped']) {
+            $this->warn($result['message']);
+
+            return self::SUCCESS;
+        }
+
+        $this->info($result['message']);
 
         return self::SUCCESS;
     }

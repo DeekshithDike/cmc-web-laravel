@@ -5,20 +5,20 @@ namespace App\Services\Income;
 use App\Enums\UserRole;
 use App\Models\ReferralIncome;
 use App\Models\User;
-use App\Services\Wallet\WalletService;
 
 class ReferralBonusService
 {
-    public function __construct(private readonly WalletService $wallet)
-    {
-    }
-
-    public function creditForActivation(User $member, ?string $asOf = null): void
+    /**
+     * Store the new member's full package amount for the sponsor.
+     * Same as the reference Node `updateReferralIncom` / `insertReferralIncom`:
+     * wallet is not credited here. DailyIncomeService pays INCOME_REFERRAL_PERCENT
+     * of that day's stored package total.
+     */
+    public function recordForActivation(User $member, ?string $asOf = null): void
     {
         $member->loadMissing('package');
-        $percent = (float) config('citymax.income.referral_percent', 10);
         $packageAmount = (float) ($member->package->amount ?? 0);
-        if ($percent <= 0 || $packageAmount <= 0 || ! $member->sponsor_id) {
+        if ($packageAmount <= 0 || ! $member->sponsor_id) {
             return;
         }
 
@@ -33,27 +33,19 @@ class ReferralBonusService
 
         $asOf = $asOf ?: now()->toDateString();
 
-        $alreadyPaid = ReferralIncome::query()
-            ->where('user_id', $sponsor->id)
+        $alreadyRecorded = ReferralIncome::query()
             ->where('from_user_id', $member->id)
             ->exists();
 
-        if ($alreadyPaid) {
-            return;
-        }
-
-        $amount = number_format(round($packageAmount * ($percent / 100), 2), 2, '.', '');
-        if (bccomp($amount, '0.00', 2) <= 0) {
+        if ($alreadyRecorded) {
             return;
         }
 
         ReferralIncome::query()->create([
             'user_id' => $sponsor->id,
             'from_user_id' => $member->id,
-            'amount' => $amount,
+            'amount' => number_format($packageAmount, 2, '.', ''),
             'earned_on' => $asOf,
         ]);
-
-        $this->wallet->credit($sponsor, $amount, 'referral_bonus');
     }
 }

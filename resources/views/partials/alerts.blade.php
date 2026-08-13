@@ -1,6 +1,9 @@
 @if (session('success'))
     <div class="alert alert-success mb-4 rounded-2xl border border-success/30 bg-success/10 text-success px-4 py-3 text-sm" role="alert">{{ session('success') }}</div>
 @endif
+@if (session('info'))
+    <div class="alert alert-info mb-4 rounded-2xl border border-primary/30 bg-primary/10 text-heading px-4 py-3 text-sm" role="alert">{{ session('info') }}</div>
+@endif
 @if (session('error'))
     <div class="alert alert-danger mb-4 rounded-2xl border border-danger/30 bg-danger/10 text-danger px-4 py-3 text-sm" role="alert">{{ session('error') }}</div>
 @endif

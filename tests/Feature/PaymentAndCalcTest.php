@@ -151,8 +151,8 @@ class PaymentAndCalcTest extends TestCase
     {
         Http::fake([
             '*/auth' => Http::response(['token' => 'jwt-test'], 200),
-            '*/payout/validate-address' => Http::response(['status' => 'OK'], 200),
-            '*/payout/*/verify' => Http::response(['status' => 'OK'], 200),
+            '*/payout/validate-address' => Http::response('OK', 200),
+            '*/payout/*/verify' => Http::response('OK', 200),
             '*/payout' => Http::response([
                 'id' => '5000000713',
                 'withdrawals' => [

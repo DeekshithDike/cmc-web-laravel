@@ -49,7 +49,9 @@ class NowPaymentsClient
             $body['extra_id'] = $extraId;
         }
 
-        return $this->request()->post($this->url('/payout/validate-address'), $body)->throw()->json();
+        $response = $this->request()->post($this->url('/payout/validate-address'), $body)->throw();
+
+        return $this->decodeOkOrJson($response->body(), $response->json());
     }
 
     public function createPayout(array $withdrawals, ?string $ipnCallbackUrl = null): array
@@ -59,11 +61,17 @@ class NowPaymentsClient
             $body['ipn_callback_url'] = $ipnCallbackUrl;
         }
 
-        return $this->request()
+        $response = $this->request()
             ->withToken($this->bearerToken())
             ->post($this->url('/payout'), $body)
-            ->throw()
-            ->json();
+            ->throw();
+
+        $decoded = $response->json();
+        if (! is_array($decoded)) {
+            throw new RuntimeException('NOWPayments payout did not return JSON.');
+        }
+
+        return $decoded;
     }
 
     /**
@@ -75,13 +83,14 @@ class NowPaymentsClient
     {
         $code = $verificationCode ?? $this->generateTotpCode();
 
-        return $this->request()
+        $response = $this->request()
             ->withToken($this->bearerToken())
             ->post($this->url('/payout/'.$batchWithdrawalId.'/verify'), [
                 'verification_code' => $code,
             ])
-            ->throw()
-            ->json();
+            ->throw();
+
+        return $this->decodeOkOrJson($response->body(), $response->json());
     }
 
     public function verifyIpnSignature(?string $rawBody, ?string $signature): bool
@@ -97,7 +106,8 @@ class NowPaymentsClient
         }
 
         $sorted = $this->sortRecursive($data);
-        $encoded = json_encode($sorted, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        // Official PHP sample: json_encode(..., JSON_UNESCAPED_SLASHES) after recursive ksort.
+        $encoded = json_encode($sorted, JSON_UNESCAPED_SLASHES);
         if ($encoded === false) {
             return false;
         }
@@ -174,6 +184,30 @@ class NowPaymentsClient
     private function url(string $path): string
     {
         return rtrim((string) config('payments.nowpayments.base_url'), '/').'/'.ltrim($path, '/');
+    }
+
+    /**
+     * NOWPayments returns plain "OK" for some 200s (validate-address, verify payout)
+     * and JSON objects for others.
+     *
+     * @param  array<string, mixed>|null  $json
+     * @return array<string, mixed>
+     */
+    private function decodeOkOrJson(string $rawBody, mixed $json): array
+    {
+        if (is_array($json)) {
+            return $json;
+        }
+
+        $trimmed = trim($rawBody);
+        if (strcasecmp($trimmed, 'OK') === 0 || $trimmed === '"OK"') {
+            return ['status' => 'OK', 'result' => true];
+        }
+
+        return [
+            'status' => 'ERROR',
+            'message' => $trimmed !== '' ? $trimmed : 'Unexpected NOWPayments response',
+        ];
     }
 
     /**

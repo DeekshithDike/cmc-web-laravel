@@ -19,7 +19,7 @@
     <div class="ibox-title"><h5>Unused Power IDs</h5></div>
     <div class="ibox-content">
         <table class="table table-striped">
-            <thead><tr><th>ID</th><th>Parent</th><th>Sponsor</th><th>Position</th></tr></thead>
+            <thead><tr><th>ID</th><th>Parent</th><th>Sponsor</th><th>Position</th><th>Guest pay link</th></tr></thead>
             <tbody>
             <?php $__empty_1 = true; $__currentLoopData = $powerIds; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                 <tr>
@@ -27,9 +27,12 @@
                     <td><?php echo e($item->parent_id); ?></td>
                     <td><?php echo e($item->sponsor_id); ?></td>
                     <td><?php echo e($item->position?->label() ?? $item->position); ?></td>
+                    <td class="text-break">
+                        <input class="form-control input-sm" readonly value="<?php echo e(route('customer.register.special', ['target' => encrypt((string) $item->id)])); ?>" onclick="this.select()">
+                    </td>
                 </tr>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                <tr><td colspan="4">No Power IDs.</td></tr>
+                <tr><td colspan="5">No Power IDs.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>

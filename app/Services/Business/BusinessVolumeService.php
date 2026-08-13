@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class BusinessVolumeService
 {
+    /**
+     * Record package volume on every ancestor, on the side the new ID sits under them.
+     * Same walk as the reference Node `updateUserTree` after placement.
+     */
     public function recordPlacementVolume(User $child, float $amount, ?string $asOf = null): void
     {
         if ($amount <= 0 || ! $child->parent_id || ! $child->position) {
@@ -19,21 +23,32 @@ class BusinessVolumeService
         }
 
         $asOf = $asOf ?: now()->toDateString();
-        $position = $child->position instanceof TreePosition
+        $formatted = number_format($amount, 2, '.', '');
+        $fromUserId = (int) $child->id;
+        $ancestorId = (int) $child->parent_id;
+        $side = $child->position instanceof TreePosition
             ? $child->position
             : TreePosition::from((string) $child->position);
 
-        $payload = [
-            'user_id' => $child->parent_id,
-            'from_user_id' => $child->id,
-            'amount' => number_format($amount, 2, '.', ''),
-            'business_date' => $asOf,
-        ];
+        $guard = 0;
+        $seen = [];
+        while ($ancestorId > 0 && $guard < 1000) {
+            $guard++;
+            if (isset($seen[$ancestorId])) {
+                break;
+            }
+            $seen[$ancestorId] = true;
+            $this->writeSide($ancestorId, $fromUserId, $formatted, $asOf, $side);
 
-        if ($position === TreePosition::Left) {
-            BinaryTreeLeft::query()->create($payload);
-        } else {
-            BinaryTreeRight::query()->create($payload);
+            $ancestor = User::query()->whereKey($ancestorId)->first(['id', 'parent_id', 'position']);
+            if (! $ancestor || ! $ancestor->parent_id || ! $ancestor->position) {
+                break;
+            }
+
+            $side = $ancestor->position instanceof TreePosition
+                ? $ancestor->position
+                : TreePosition::from((string) $ancestor->position);
+            $ancestorId = (int) $ancestor->parent_id;
         }
     }
 
@@ -109,6 +124,22 @@ class BusinessVolumeService
             'total' => number_format($leftTotal + $rightTotal, 2, '.', ''),
             'today' => number_format($leftToday + $rightToday, 2, '.', ''),
         ];
+    }
+
+    private function writeSide(int $userId, int $fromUserId, string $amount, string $asOf, TreePosition $side): void
+    {
+        $payload = [
+            'user_id' => $userId,
+            'from_user_id' => $fromUserId,
+            'amount' => $amount,
+            'business_date' => $asOf,
+        ];
+
+        if ($side === TreePosition::Left) {
+            BinaryTreeLeft::query()->create($payload);
+        } else {
+            BinaryTreeRight::query()->create($payload);
+        }
     }
 
     private function sumSide(string $model, int $userId, ?string $date): string

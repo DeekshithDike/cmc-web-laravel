@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Income\DailyIncomeService;
 use App\Services\Renewals\RenewalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -48,6 +49,7 @@ class RenewalAndIncomeTest extends TestCase
 
     public function test_daily_income_credits_roi_once(): void
     {
+        Carbon::setTestNow('2026-08-14 12:00:00');
         Http::fake(['*/internal/jobs/daily-income*' => Http::response(['ok' => true], 202)]);
 
         $package = Package::query()->create([
@@ -78,6 +80,8 @@ class RenewalAndIncomeTest extends TestCase
 
         $again = app(DailyIncomeService::class)->run(now()->toDateString());
         $this->assertSame(0, $again['processed']);
+        $this->assertTrue($again['skipped']);
+        Carbon::setTestNow();
     }
 
     public function test_invite_register_page_requires_link(): void

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
      * @var list<string>
      */
     private const TABLES = [
+        'daily_income_runs',
         'wallet_transactions',
         'calculation_jobs',
         'payment_transactions',

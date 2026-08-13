@@ -7,11 +7,13 @@ use App\Models\BinaryIncome;
 use App\Models\BinaryTreeLeft;
 use App\Models\BinaryTreeRight;
 use App\Models\CarryForward;
+use App\Models\DailyIncomeRun;
 use App\Models\PaymentDetail;
 use App\Models\ReferralIncome;
 use App\Models\User;
 use App\Services\Calc\CalcDispatcher;
 use App\Services\Wallet\WalletService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DailyIncomeService
@@ -22,19 +24,36 @@ class DailyIncomeService
     ) {
     }
 
-    /**
-     * Laravel owns money: ROI + binary matching. Node is notified but must not credit wallets.
-     *
-     * @return array{processed: int, total: string, asOf: string}
-     */
-    public function run(?string $asOf = null): array
+    public function previousDate(?Carbon $now = null): string
     {
-        $asOf = $asOf ?: now()->toDateString();
-        $this->calc->dailyIncome(['asOf' => $asOf, 'source' => 'laravel']);
+        return ($now ?? now())->subDay()->toDateString();
+    }
+
+    /**
+     * Pay ROI, binary matching, and referral for one calendar day (00:00–23:59).
+     * Cron and admin both default to yesterday. A completed run is never repeated.
+     *
+     * @return array{processed: int, total: string, asOf: string, skipped: bool, message: string}
+     */
+    public function run(?string $asOf = null, string $triggeredBy = 'command'): array
+    {
+        $asOf = $asOf ?: $this->previousDate();
+        $claim = $this->claimRun($asOf, $triggeredBy);
+
+        if ($claim['skipped']) {
+            return $claim['result'];
+        }
+
+        /** @var DailyIncomeRun $run */
+        $run = $claim['run'];
+
+        $this->calc->dailyIncome(['asOf' => $asOf, 'source' => 'laravel', 'triggeredBy' => $triggeredBy]);
 
         $processed = 0;
         $totalPaid = '0.00';
-        $binaryPercent = (float) config('citymax.income.binary_percent', 10);
+        $binaryPercent = (float) config('citymax.income.binary_percent', 5);
+        $binaryMax = (float) config('citymax.income.binary_max', 500);
+        $referralPercent = (float) config('citymax.income.referral_percent', 10);
 
         User::query()
             ->where('role', UserRole::Customer)
@@ -49,9 +68,9 @@ class DailyIncomeService
             })
             ->with('package:id,amount,roi_percent')
             ->orderBy('id')
-            ->chunkById(200, function ($users) use ($asOf, $binaryPercent, &$processed, &$totalPaid) {
+            ->chunkById(200, function ($users) use ($asOf, $binaryPercent, $binaryMax, $referralPercent, &$processed, &$totalPaid) {
                 foreach ($users as $user) {
-                    $paid = $this->payUserForDay($user, $asOf, $binaryPercent);
+                    $paid = $this->payUserForDay($user, $asOf, $binaryPercent, $binaryMax, $referralPercent);
                     if ($paid !== null) {
                         $processed++;
                         $totalPaid = bcadd($totalPaid, $paid, 2);
@@ -60,29 +79,78 @@ class DailyIncomeService
                 }
             });
 
+        $run->update([
+            'status' => DailyIncomeRun::STATUS_COMPLETED,
+            'triggered_by' => $triggeredBy,
+            'processed' => $processed,
+            'total_paid' => $totalPaid,
+        ]);
+
         return [
             'processed' => $processed,
             'total' => $totalPaid,
             'asOf' => $asOf,
+            'skipped' => false,
+            'message' => "Daily income for {$asOf}: {$processed} members, \${$totalPaid} paid.",
         ];
     }
 
-    private function payUserForDay(User $user, string $asOf, float $binaryPercent): ?string
+    /**
+     * @return array{skipped: bool, run?: DailyIncomeRun, result?: array{processed: int, total: string, asOf: string, skipped: bool, message: string}}
+     */
+    private function claimRun(string $asOf, string $triggeredBy): array
+    {
+        return DB::transaction(function () use ($asOf, $triggeredBy) {
+            $run = DailyIncomeRun::query()->whereDate('as_of', $asOf)->lockForUpdate()->first();
+
+            if ($run && $run->status === DailyIncomeRun::STATUS_COMPLETED) {
+                $total = number_format((float) $run->total_paid, 2, '.', '');
+
+                return [
+                    'skipped' => true,
+                    'result' => [
+                        'processed' => 0,
+                        'total' => $total,
+                        'asOf' => $asOf,
+                        'skipped' => true,
+                        'message' => "Daily income for {$asOf} was already calculated ({$run->processed} members, \${$total}).",
+                    ],
+                ];
+            }
+
+            if (! $run) {
+                $run = DailyIncomeRun::query()->create([
+                    'as_of' => $asOf,
+                    'status' => DailyIncomeRun::STATUS_RUNNING,
+                    'triggered_by' => $triggeredBy,
+                    'processed' => 0,
+                    'total_paid' => '0.00',
+                ]);
+            }
+
+            return ['skipped' => false, 'run' => $run];
+        });
+    }
+
+    private function payUserForDay(User $user, string $asOf, float $binaryPercent, float $binaryMax, float $referralPercent): ?string
     {
         $packageAmount = (float) ($user->package->amount ?? 0);
         $roiPercent = (float) ($user->package->roi_percent ?? 0);
-        $roi = $packageAmount > 0 && $roiPercent > 0
+        $roi = $this->paysRoiOn($asOf) && $packageAmount > 0 && $roiPercent > 0
             ? round($packageAmount * ($roiPercent / 100), 2)
             : 0.0;
 
-        $binary = $this->matchBinary($user, $asOf, $binaryPercent);
+        $binary = $this->matchBinary($user, $asOf, $binaryPercent, $packageAmount, $binaryMax);
 
-        $referral = (float) ReferralIncome::query()
+        $referralVolume = (float) ReferralIncome::query()
             ->where('user_id', $user->id)
             ->whereDate('earned_on', $asOf)
             ->sum('amount');
+        $referralPay = $referralVolume > 0 && $referralPercent > 0
+            ? round($referralVolume * ($referralPercent / 100), 2)
+            : 0.0;
 
-        if ($roi <= 0 && $binary['pay'] <= 0 && $referral <= 0) {
+        if ($roi <= 0 && $binary['pay'] <= 0 && $referralPay <= 0) {
             if ($binary['left'] > 0 || $binary['right'] > 0) {
                 $this->storeCarry($user->id, $asOf, $binary['left_carry'], $binary['right_carry']);
             }
@@ -92,17 +160,16 @@ class DailyIncomeService
 
         $roiFormatted = number_format($roi, 2, '.', '');
         $binaryFormatted = number_format($binary['pay'], 2, '.', '');
-        $referralFormatted = number_format($referral, 2, '.', '');
-        $walletCredit = bcadd($roiFormatted, $binaryFormatted, 2);
-        $totalDisplay = bcadd($walletCredit, $referralFormatted, 2);
+        $referralFormatted = number_format($referralPay, 2, '.', '');
+        $walletCredit = bcadd(bcadd($roiFormatted, $binaryFormatted, 2), $referralFormatted, 2);
 
-        DB::transaction(function () use ($user, $asOf, $roiFormatted, $binaryFormatted, $referralFormatted, $totalDisplay, $roi, $binary) {
+        DB::transaction(function () use ($user, $asOf, $roiFormatted, $binaryFormatted, $referralFormatted, $walletCredit, $roi, $binary, $referralPay) {
             PaymentDetail::query()->create([
                 'user_id' => $user->id,
                 'roi_amount' => $roiFormatted,
                 'binary_amount' => $binaryFormatted,
                 'referral_amount' => $referralFormatted,
-                'total_amount' => $totalDisplay,
+                'total_amount' => $walletCredit,
                 'paid_on' => $asOf,
             ]);
 
@@ -121,6 +188,10 @@ class DailyIncomeService
                 $this->wallet->credit($user, $binary['pay'], 'daily_binary');
             }
 
+            if ($referralPay > 0) {
+                $this->wallet->credit($user, $referralPay, 'daily_referral');
+            }
+
             $this->storeCarry($user->id, $asOf, $binary['left_carry'], $binary['right_carry']);
         });
 
@@ -128,9 +199,19 @@ class DailyIncomeService
     }
 
     /**
+     * Reference Node skips JS getDay() 0 and 1: Sunday and Monday.
+     */
+    private function paysRoiOn(string $asOf): bool
+    {
+        $day = Carbon::parse($asOf)->dayOfWeek;
+
+        return $day !== Carbon::SUNDAY && $day !== Carbon::MONDAY;
+    }
+
+    /**
      * @return array{pay: float, left: float, right: float, left_carry: float, right_carry: float}
      */
-    private function matchBinary(User $user, string $asOf, float $binaryPercent): array
+    private function matchBinary(User $user, string $asOf, float $binaryPercent, float $packageCap, float $binaryMax): array
     {
         $leftToday = (float) BinaryTreeLeft::query()
             ->where('user_id', $user->id)
@@ -153,6 +234,14 @@ class DailyIncomeService
         $pay = $matched > 0 && $binaryPercent > 0
             ? round($matched * ($binaryPercent / 100), 2)
             : 0.0;
+
+        if ($packageCap > 0 && $pay > $packageCap) {
+            $pay = round($packageCap, 2);
+        }
+
+        if ($binaryMax > 0 && $pay > $binaryMax) {
+            $pay = round($binaryMax, 2);
+        }
 
         return [
             'pay' => $pay,

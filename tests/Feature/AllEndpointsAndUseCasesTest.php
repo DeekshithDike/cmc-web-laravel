@@ -77,6 +77,9 @@ class AllEndpointsAndUseCasesTest extends TestCase
         $this->get(route('admin.login'))->assertOk();
         $this->get(route('customer.login'))->assertOk();
         $this->get(route('customer.register'))->assertRedirect(route('landing'));
+        $this->get(route('customer.register.special'))->assertRedirect(route('landing'));
+        $this->get(route('customer.payment.success'))->assertOk()->assertSee('Registration successful', false);
+        $this->get(route('customer.payment.cancel'))->assertOk()->assertSee('Signup again using the link', false);
 
         $this->get(route('admin.dashboard'))->assertRedirect(route('admin.login'));
         $this->get(route('customer.dashboard'))->assertRedirect(route('customer.login'));
@@ -174,9 +177,9 @@ class AllEndpointsAndUseCasesTest extends TestCase
             ->assertSessionHas('success');
         $this->assertSame('completed', $tx->fresh()->status);
 
-        $this->actingAs($this->admin)->post(route('admin.income.daily.run'), [
-            'as_of' => now()->toDateString(),
-        ])->assertRedirect()->assertSessionHas('success');
+        $this->actingAs($this->admin)->post(route('admin.income.daily.run'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
 
         $this->actingAs($this->admin)->post(route('admin.power.store'), [
             'parent_id' => $this->root->id,
@@ -271,12 +274,12 @@ class AllEndpointsAndUseCasesTest extends TestCase
 
         $this->actingAs($this->root)->from(route('customer.withdrawals.create'))->post(route('customer.withdrawals.store'), [
             'amount' => 5,
-            'wallet_address' => '0xabc1234567',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
         ])->assertRedirect()->assertSessionHas('error');
 
         $this->actingAs($this->root)->post(route('customer.withdrawals.store'), [
             'amount' => 25,
-            'wallet_address' => '0xabc1234567890def',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
         ])->assertRedirect(route('customer.withdrawals.history'));
 
         $wd = Withdrawal::query()->latest('id')->firstOrFail();
@@ -308,7 +311,7 @@ class AllEndpointsAndUseCasesTest extends TestCase
             'sponsorID' => $this->root->id,
         ]))->assertOk();
 
-        $this->assertRedirectedToCredentials(
+        $this->assertRedirectedToPaymentCheckout(
             $this->post(route('customer.register.save'), [
                 'name' => 'Invitee EP',
                 'email' => 'invite-ep@citymaxcrypto.com',
@@ -321,14 +324,16 @@ class AllEndpointsAndUseCasesTest extends TestCase
             ])
         );
 
-        $invitee = User::query()->where('email', 'invite-ep@citymaxcrypto.com')->firstOrFail();
-        $tx = PaymentTransaction::query()->where('user_id', $invitee->id)->firstOrFail();
+        $this->assertNull(User::query()->where('email', 'invite-ep@citymaxcrypto.com')->first());
+        $tx = PaymentTransaction::query()->latest('id')->firstOrFail();
         $this->assertSame('pending', $tx->status);
+        $this->assertNull($tx->user_id);
 
         $this->actingAs($this->admin)->post(route('admin.payments.confirm', $tx))
             ->assertRedirect()
             ->assertSessionHas('success');
+        $invitee = User::query()->where('email', 'invite-ep@citymaxcrypto.com')->firstOrFail();
         $this->assertSame('completed', $tx->fresh()->status);
-        $this->assertTrue((bool) $invitee->fresh()->is_active);
+        $this->assertTrue((bool) $invitee->is_active);
     }
 }

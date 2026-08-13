@@ -3,12 +3,15 @@
 <div class="ibox">
     <div class="ibox-title"><h5>Run Daily Income</h5></div>
     <div class="ibox-content">
-        <form method="POST" action="<?php echo e(route('admin.income.daily.run')); ?>" class="form-inline">
+        <p class="m-b-sm">Calculates <strong><?php echo e($asOf); ?></strong> (yesterday, 00:00–23:59). Same job as the 00:05 cron. Already calculated days are skipped.</p>
+        <?php if($existing && $existing->status === 'completed'): ?>
+            <p class="text-success">Already calculated: <?php echo e($existing->processed); ?> members, $<?php echo e(number_format((float) $existing->total_paid, 2)); ?> (<?php echo e($existing->triggered_by); ?>).</p>
+        <?php endif; ?>
+        <form method="POST" action="<?php echo e(route('admin.income.daily.run')); ?>">
             <?php echo csrf_field(); ?>
-            <input class="form-control m-r-sm" type="date" name="as_of" value="<?php echo e(now()->toDateString()); ?>">
-            <button class="btn btn-primary">Run ROI payout</button>
+            <button class="btn btn-primary" <?php if($existing && $existing->status === 'completed'): ?> disabled <?php endif; ?>>Run previous day income</button>
         </form>
-        <p class="text-muted m-t-sm">Credits package ROI % to each active member once per day. Binary/referral remain for Node calc later.</p>
+        <p class="text-muted m-t-sm">Pays ROI (skipped Sunday and Monday), 5% binary matching (capped at package and $500), and 10% of that day's stored referral package volume.</p>
     </div>
 </div>
 <div class="ibox">

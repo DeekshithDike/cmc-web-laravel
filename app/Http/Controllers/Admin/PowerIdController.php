@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Models\User;
+use App\Services\Auth\MemberCredentialsNotifier;
 use App\Services\Membership\MembershipService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,7 +50,7 @@ class PowerIdController extends Controller
         ]);
     }
 
-    public function activate(Request $request, MembershipService $membership): RedirectResponse
+    public function activate(Request $request, MembershipService $membership, MemberCredentialsNotifier $credentials): RedirectResponse
     {
         $data = $request->validate([
             'power_id' => ['required', 'integer', 'exists:users,id'],
@@ -65,6 +66,8 @@ class PowerIdController extends Controller
         } catch (InvalidArgumentException|Throwable $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
+
+        $credentials->email($user);
 
         return $this->redirectToOneTimeCredentials((int) $user->id, (string) $user->plain_password);
     }

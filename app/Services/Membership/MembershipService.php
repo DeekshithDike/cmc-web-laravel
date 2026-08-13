@@ -24,9 +24,13 @@ class MembershipService
     ) {
     }
 
-    public function createActiveMember(array $data, bool $awaitingPayment = false): User
+    /**
+     * Create a paid, active member and occupy the tree seat.
+     * Invite checkout must not call this until payment is confirmed.
+     */
+    public function createActiveMember(array $data, bool $notifyCalc = true): User
     {
-        $user = DB::transaction(function () use ($data, $awaitingPayment) {
+        $user = DB::transaction(function () use ($data) {
             $package = Package::query()->whereKey($data['package_id'])->where('is_active', true)->firstOrFail();
             $parent = User::query()->whereKey($data['parent_id'])->where('role', UserRole::Customer)->firstOrFail();
             $sponsor = User::query()->whereKey($data['sponsor_id'])->where('role', UserRole::Customer)->firstOrFail();
@@ -41,9 +45,9 @@ class MembershipService
                 'email' => $data['email'],
                 'password' => $password,
                 'role' => UserRole::Customer,
-                'status' => $awaitingPayment ? UserStatus::Inactive : UserStatus::Active,
-                'is_active' => ! $awaitingPayment,
-                'payment_status' => ! $awaitingPayment,
+                'status' => UserStatus::Active,
+                'is_active' => true,
+                'payment_status' => true,
                 'is_power_id' => false,
                 'sponsor_id' => $sponsor->id,
                 'parent_id' => $parent->id,
@@ -51,36 +55,34 @@ class MembershipService
                 'package_id' => $package->id,
                 'phone' => $data['phone'] ?? null,
                 'country' => $data['country'] ?? null,
-                'expiry_date' => $awaitingPayment
-                    ? null
-                    : now()->addWeekdays((int) config('citymax.membership.weekdays', 150))->toDateString(),
+                'expiry_date' => now()->addWeekdays((int) config('citymax.membership.weekdays', 150))->toDateString(),
                 'wallet_balance' => '0.00',
             ]);
 
             $this->attachToTree($user, $parent, $position);
-
-            if (! $awaitingPayment) {
-                $this->volumes->recordPlacementVolume($user, (float) $package->amount);
-                $this->referrals->creditForActivation($user);
-            }
+            $this->volumes->recordPlacementVolume($user, (float) $package->amount);
+            $this->referrals->recordForActivation($user);
 
             $user->plain_password = $password;
 
             return $user;
         });
 
-        if (! $awaitingPayment) {
-            $this->calc->placeMember([
-                'userId' => $user->id,
-                'parentId' => $user->parent_id,
-                'sponsorId' => $user->sponsor_id,
-                'position' => $user->position instanceof TreePosition ? $user->position->value : $user->position,
-                'packageId' => $user->package_id,
-                'userType' => 'NORMAL',
-            ]);
+        if ($notifyCalc) {
+            $this->calc->placeMember($this->placeMemberPayload($user, 'NORMAL'));
         }
 
         return $user;
+    }
+
+    public function assertInvitePlacementAvailable(int $parentId, string $position): void
+    {
+        $parent = User::query()->whereKey($parentId)->where('role', UserRole::Customer)->first();
+        if (! $parent) {
+            throw new InvalidArgumentException('Placement ID not found.');
+        }
+
+        $this->assertSlotFree($parentId, TreePosition::from($position));
     }
 
     public function createPowerId(int $parentId, int $sponsorId, string $position): User
@@ -111,18 +113,12 @@ class MembershipService
             return $user;
         });
 
-        $this->calc->placeMember([
-            'userId' => $user->id,
-            'parentId' => $user->parent_id,
-            'sponsorId' => $user->sponsor_id,
-            'position' => $user->position instanceof TreePosition ? $user->position->value : $user->position,
-            'userType' => 'DUMMY',
-        ]);
+        $this->calc->placeMember($this->placeMemberPayload($user, 'DUMMY'));
 
         return $user;
     }
 
-    public function activatePowerId(int $powerId, array $data): User
+    public function activatePowerId(int $powerId, array $data, bool $notifyCalc = true): User
     {
         $user = DB::transaction(function () use ($powerId, $data) {
             $user = User::query()
@@ -151,24 +147,34 @@ class MembershipService
 
             $user->plain_password = $password;
 
-            return $user->fresh();
+            return $user;
         });
 
         if ($user->package) {
             $this->volumes->recordPlacementVolume($user, (float) $user->package->amount);
-            $this->referrals->creditForActivation($user);
+            $this->referrals->recordForActivation($user);
         }
 
-        $this->calc->placeMember([
+        if ($notifyCalc) {
+            $this->calc->placeMember($this->placeMemberPayload($user, 'DUMMY_ACTIVATED'));
+        }
+
+        return $user;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function placeMemberPayload(User $user, string $userType): array
+    {
+        return [
             'userId' => $user->id,
             'parentId' => $user->parent_id,
             'sponsorId' => $user->sponsor_id,
             'position' => $user->position instanceof TreePosition ? $user->position->value : $user->position,
             'packageId' => $user->package_id,
-            'userType' => 'DUMMY_ACTIVATED',
-        ]);
-
-        return $user;
+            'userType' => $userType,
+        ];
     }
 
     private function assertSlotFree(int $parentId, TreePosition $position): void

@@ -42,9 +42,24 @@ class PaymentWebhookController extends Controller
                 'provider' => $provider,
                 'order_id' => $request->input('order_id'),
                 'payment_id' => $request->input('payment_id'),
+                'invoice_id' => $request->input('invoice_id'),
             ]);
 
             return response()->json(['ok' => false, 'error' => 'Transaction not found'], 404);
+        }
+
+        if ($request->filled('parent_payment_id')) {
+            Log::info('Ignoring NOWPayments repeated-deposit IPN', [
+                'provider' => $provider,
+                'payment_id' => $request->input('payment_id'),
+                'parent_payment_id' => $request->input('parent_payment_id'),
+                'transaction_id' => $transaction->id,
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'status' => 'ignored_redeposit',
+            ]);
         }
 
         if (in_array($transaction->status, ['completed', 'failed'], true)) {

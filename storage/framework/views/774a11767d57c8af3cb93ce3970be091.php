@@ -4,7 +4,7 @@
 <div class="bg-surface border border-border rounded-2xl p-6 shadow-sm max-w-xl">
     <p class="text-sm text-muted mb-1">Wallet balance</p>
     <p class="text-3xl font-bold text-heading mb-4">$<?php echo e(number_format((float)$user->wallet_balance, 2)); ?></p>
-    <p class="text-xs text-muted mb-4">Minimum $<?php echo e(number_format((float)$minimum, 2)); ?> · Fee $<?php echo e(number_format((float)$fee, 2)); ?> · Address must start with <code>0x</code></p>
+    <p class="text-xs text-muted mb-4">Minimum $<?php echo e(number_format((float)$minimum, 2)); ?> · Fee $<?php echo e(number_format((float)$fee, 2)); ?> · USDT ERC-20 / BEP-20 address (<code>0x</code> + 40 hex characters)</p>
     <form method="POST" action="<?php echo e(route('customer.withdrawals.store')); ?>" class="space-y-4">
         <?php echo csrf_field(); ?>
         <div>

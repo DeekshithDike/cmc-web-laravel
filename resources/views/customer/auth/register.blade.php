@@ -3,8 +3,8 @@
 @section('title', 'Register')
 
 @section('content')
-<h2 class="text-xl font-bold text-heading text-center">Join {{ config('citymax.name') }}</h2>
-<p class="text-sm text-muted text-center mt-1">Complete your invite registration</p>
+<h2 class="text-xl font-bold text-heading text-center">{{ $heading ?? 'Join '.config('citymax.name') }}</h2>
+<p class="text-sm text-muted text-center mt-1">{{ $powerId ? 'Pay to activate this reserved Power ID' : 'Complete your invite registration' }}</p>
 
 @include('partials.alerts')
 
@@ -12,7 +12,7 @@
     Placement <strong>#{{ $placementId }}</strong> · {{ ucfirst($position) }} · Sponsor <strong>#{{ $sponsorId }}</strong>
 </div>
 
-<form class="space-y-3 mt-4" method="POST" action="{{ route('customer.register.save') }}">
+<form class="space-y-3 mt-4" method="POST" action="{{ $formAction ?? route('customer.register.save') }}">
     @csrf
     <input type="hidden" name="parent_id" value="{{ $placementId }}">
     <input type="hidden" name="position" value="{{ $position }}">
@@ -42,7 +42,7 @@
         </select>
     </div>
     <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors mt-2">
-        Create account <i class="ph ph-arrow-right text-base"></i>
+        Continue to payment <i class="ph ph-arrow-right text-base"></i>
     </button>
 </form>
 @endsection

@@ -26,7 +26,7 @@
     </div>
     @if (! empty($payload['continue_url']))
         <a href="{{ $payload['continue_url'] }}" class="mt-6 w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
-            Continue to payment <i class="ph ph-arrow-right text-base"></i>
+            Continue <i class="ph ph-arrow-right text-base"></i>
         </a>
     @endif
     <p class="text-sm text-muted text-center mt-5">

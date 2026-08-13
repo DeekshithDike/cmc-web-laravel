@@ -20,11 +20,17 @@
             <?php $__empty_1 = true; $__currentLoopData = $transactions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tx): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                 <tr>
                     <td><?php echo e($tx->id); ?></td>
-                    <td>#<?php echo e($tx->user_id); ?></td>
+                    <td><?php echo e($tx->user_id ? '#'.$tx->user_id : ($tx->meta['signup']['email'] ?? 'pending')); ?></td>
                     <td><?php echo e($tx->provider?->value ?? $tx->provider); ?></td>
                     <td><?php echo e($tx->provider_ref); ?></td>
                     <td>$<?php echo e(number_format((float)$tx->amount, 2)); ?></td>
-                    <td><?php echo e($tx->status); ?></td>
+                    <td>
+                        <?php echo e($tx->status); ?>
+
+                        <?php if(! empty($tx->meta['activation_error'])): ?>
+                            <div class="text-danger small"><?php echo e($tx->meta['activation_error']); ?></div>
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <?php if($tx->status === 'pending'): ?>
                         <form method="POST" action="<?php echo e(route('admin.payments.confirm', $tx)); ?>"><?php echo csrf_field(); ?>

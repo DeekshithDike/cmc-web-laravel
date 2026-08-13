@@ -33,18 +33,24 @@ class DashboardController extends Controller
             'rightBusinessToday' => $volume['right_today'],
             'leftBusinessTotal' => $volume['left_total'],
             'rightBusinessTotal' => $volume['right_total'],
-            'referralToday' => number_format(
-                (float) ReferralIncome::query()->where('user_id', $user->id)->whereDate('earned_on', $today)->sum('amount'),
-                2,
-                '.',
-                ''
-            ),
-            'referralTotal' => number_format(
-                (float) ReferralIncome::query()->where('user_id', $user->id)->sum('amount'),
-                2,
-                '.',
-                ''
-            ),
+            'referralToday' => $this->referralDisplay((int) $user->id, $today),
+            'referralTotal' => $this->referralDisplay((int) $user->id, null),
         ]);
+    }
+
+    private function referralDisplay(int $userId, ?string $onDate): string
+    {
+        $query = ReferralIncome::query()->where('user_id', $userId);
+        if ($onDate) {
+            $query->whereDate('earned_on', $onDate);
+        }
+
+        $volume = (float) $query->sum('amount');
+        $percent = (float) config('citymax.income.referral_percent', 10);
+        $paid = $volume > 0 && $percent > 0
+            ? round($volume * ($percent / 100), 2)
+            : 0.0;
+
+        return number_format($paid, 2, '.', '');
     }
 }

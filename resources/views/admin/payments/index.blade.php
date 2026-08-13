@@ -21,11 +21,16 @@
             @forelse($transactions as $tx)
                 <tr>
                     <td>{{ $tx->id }}</td>
-                    <td>#{{ $tx->user_id }}</td>
+                    <td>{{ $tx->user_id ? '#'.$tx->user_id : ($tx->meta['signup']['email'] ?? 'pending') }}</td>
                     <td>{{ $tx->provider?->value ?? $tx->provider }}</td>
                     <td>{{ $tx->provider_ref }}</td>
                     <td>${{ number_format((float)$tx->amount, 2) }}</td>
-                    <td>{{ $tx->status }}</td>
+                    <td>
+                        {{ $tx->status }}
+                        @if (! empty($tx->meta['activation_error']))
+                            <div class="text-danger small">{{ $tx->meta['activation_error'] }}</div>
+                        @endif
+                    </td>
                     <td>
                         @if($tx->status === 'pending')
                         <form method="POST" action="{{ route('admin.payments.confirm', $tx) }}">@csrf

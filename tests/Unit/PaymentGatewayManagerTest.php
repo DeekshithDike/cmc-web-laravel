@@ -43,12 +43,41 @@ class PaymentGatewayManagerTest extends TestCase
             'order_id' => 'CMC-1',
         ];
         ksort($payload);
-        $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $sig = hash_hmac('sha512', $body, 'ipn-test-secret');
 
         $client = app(NowPaymentsClient::class);
         $this->assertTrue($client->verifyIpnSignature($body, $sig));
         $this->assertFalse($client->verifyIpnSignature($body, 'bad-signature'));
+    }
+
+    public function test_nowpayments_ipn_signature_matches_official_php_sample(): void
+    {
+        config(['payments.nowpayments.ipn_secret' => 'ipn-test-secret']);
+
+        $payload = [
+            'payment_id' => 123456789,
+            'parent_payment_id' => 987654321,
+            'invoice_id' => null,
+            'payment_status' => 'finished',
+            'price_amount' => 1,
+            'price_currency' => 'usd',
+            'order_id' => 'CMC-INV-1',
+            'fee' => [
+                'currency' => 'btc',
+                'depositFee' => 0.1,
+                'withdrawalFee' => 0,
+                'serviceFee' => 0,
+            ],
+        ];
+
+        $sorted = $payload;
+        ksort($sorted);
+        ksort($sorted['fee']);
+        $body = json_encode($sorted, JSON_UNESCAPED_SLASHES);
+        $sig = hash_hmac('sha512', $body, 'ipn-test-secret');
+
+        $this->assertTrue(app(NowPaymentsClient::class)->verifyIpnSignature($body, $sig));
     }
 
     public function test_nowpayments_totp_is_six_digits(): void

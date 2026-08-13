@@ -27,8 +27,8 @@ class TreeController extends Controller
             'tree' => $tree,
             'left' => $left,
             'right' => $right,
-            'leftLink' => url('/customer/register?placementID='.$user->id.'&position=left&sponsorID='.$user->id),
-            'rightLink' => url('/customer/register?placementID='.$user->id.'&position=right&sponsorID='.$user->id),
+            'leftLink' => url('/customer/register?placementID='.$user->id.'&position=left'),
+            'rightLink' => url('/customer/register?placementID='.$user->id.'&position=right'),
         ]);
     }
 
@@ -52,8 +52,8 @@ class TreeController extends Controller
             'tree' => $user->binaryTree,
             'left' => $user->binaryTree?->leftUser,
             'right' => $user->binaryTree?->rightUser,
-            'leftLink' => url('/customer/register?placementID='.$user->id.'&position=left&sponsorID='.$request->user()->id),
-            'rightLink' => url('/customer/register?placementID='.$user->id.'&position=right&sponsorID='.$request->user()->id),
+            'leftLink' => url('/customer/register?placementID='.$user->id.'&position=left'),
+            'rightLink' => url('/customer/register?placementID='.$user->id.'&position=right'),
         ]);
     }
 }

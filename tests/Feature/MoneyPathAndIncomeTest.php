@@ -7,8 +7,13 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Enums\WithdrawalStatus;
 use App\Models\BinaryTree;
+use App\Models\BinaryTreeLeft;
+use App\Models\BinaryTreeRight;
+use App\Models\CarryForward;
+use App\Models\DailyIncomeRun;
 use App\Models\Package;
 use App\Models\PaymentDetail;
+use App\Models\PaymentTransaction;
 use App\Models\ReferralIncome;
 use App\Models\User;
 use App\Models\WalletTransaction;
@@ -19,6 +24,7 @@ use App\Services\Payments\PaymentService;
 use App\Services\Payouts\NowPaymentsPayoutGateway;
 use App\Services\Wallet\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Tests\TestCase;
@@ -36,6 +42,8 @@ class MoneyPathAndIncomeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Carbon::setTestNow('2026-08-14 12:00:00');
 
         Http::fake(['*' => Http::response(['ok' => true], 202)]);
 
@@ -71,6 +79,12 @@ class MoneyPathAndIncomeTest extends TestCase
         ]);
 
         BinaryTree::query()->create(['users_id' => $this->root->id]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_payout_stub_is_rejected_when_stubs_disabled(): void
@@ -141,24 +155,31 @@ class MoneyPathAndIncomeTest extends TestCase
             'payments.nowpayments.ipn_secret' => null,
         ]);
 
-        $user = app(MembershipService::class)->createActiveMember([
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'left',
+            'sponsorID' => $this->root->id,
+        ]))->assertOk();
+
+        $this->post(route('customer.register.save'), [
             'name' => 'Unpaid',
             'email' => 'unpaid-mp@test.com',
             'sponsor_id' => $this->root->id,
             'parent_id' => $this->root->id,
             'position' => 'left',
             'package_id' => $this->package->id,
-        ], true);
+        ])->assertRedirect();
 
-        $started = app(PaymentService::class)->start($user, 100, PaymentProvider::NowPayments);
+        $started = PaymentTransaction::query()->latest('id')->firstOrFail();
         $this->postJson(route('webhooks.payments.handle', 'nowpayments'), [
             'payment_status' => 'finished',
-            'order_id' => $started['transaction']->provider_ref,
+            'order_id' => $started->meta['order_id'] ?? $started->provider_ref,
             'price_amount' => 10,
         ])->assertOk();
 
-        $this->assertSame('failed', $started['transaction']->fresh()->status);
-        $this->assertFalse((bool) $user->fresh()->payment_status);
+        $this->assertSame('failed', $started->fresh()->status);
+        $this->assertNull(User::query()->where('email', 'unpaid-mp@test.com')->first());
+        $this->assertNull(BinaryTree::query()->where('users_id', $this->root->id)->value('left_user_id'));
     }
 
     public function test_invite_register_ignores_spoofed_sponsor(): void
@@ -181,7 +202,7 @@ class MoneyPathAndIncomeTest extends TestCase
             'sponsorID' => $this->root->id,
         ]))->assertOk();
 
-        $this->assertRedirectedToCredentials(
+        $this->assertRedirectedToPaymentCheckout(
             $this->post(route('customer.register.save'), [
                 'name' => 'Spoofed',
                 'email' => 'spoofed@test.com',
@@ -191,6 +212,13 @@ class MoneyPathAndIncomeTest extends TestCase
                 'package_id' => $this->package->id,
             ])
         );
+
+        $this->assertNull(User::query()->where('email', 'spoofed@test.com')->first());
+
+        $tx = PaymentTransaction::query()->latest('id')->firstOrFail();
+        $this->actingAs($this->admin)->post(route('admin.payments.confirm', $tx))
+            ->assertRedirect()
+            ->assertSessionHas('success');
 
         $child = User::query()->where('email', 'spoofed@test.com')->firstOrFail();
         $this->assertSame($this->root->id, $child->sponsor_id);
@@ -236,22 +264,185 @@ class MoneyPathAndIncomeTest extends TestCase
             'package_id' => $this->package->id,
         ]);
 
-        $this->assertEquals('120.00', number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+        $this->assertEquals('100.00', number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
         $this->assertSame(2, ReferralIncome::query()->where('user_id', $this->root->id)->count());
+        $this->assertEquals('200.00', number_format((float) ReferralIncome::query()->where('user_id', $this->root->id)->sum('amount'), 2, '.', ''));
+
+        $this->actingAs($this->root)->get(route('customer.dashboard'))
+            ->assertOk()
+            ->assertSee('Today Referral', false)
+            ->assertSee('$20.00', false)
+            ->assertDontSee('$200.00', false);
 
         $result = app(DailyIncomeService::class)->run(now()->toDateString());
         $this->assertGreaterThanOrEqual(1, $result['processed']);
 
         $rootRow = PaymentDetail::query()->where('user_id', $this->root->id)->firstOrFail();
         $this->assertSame('1.00', number_format((float) $rootRow->roi_amount, 2, '.', ''));
-        $this->assertSame('10.00', number_format((float) $rootRow->binary_amount, 2, '.', ''));
+        $this->assertSame('5.00', number_format((float) $rootRow->binary_amount, 2, '.', ''));
         $this->assertSame('20.00', number_format((float) $rootRow->referral_amount, 2, '.', ''));
-        $this->assertEquals('131.00', number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+        $this->assertEquals('126.00', number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
 
         $this->actingAs($this->root)->get(route('customer.dashboard'))
             ->assertOk()
             ->assertSee('100.00', false)
             ->assertSee('20.00', false);
+    }
+
+    public function test_daily_binary_pay_is_capped_at_active_package_amount(): void
+    {
+        $asOf = now()->toDateString();
+
+        BinaryTreeLeft::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '5000.00',
+            'business_date' => $asOf,
+        ]);
+        BinaryTreeRight::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '5000.00',
+            'business_date' => $asOf,
+        ]);
+
+        $before = (float) $this->root->fresh()->wallet_balance;
+        app(DailyIncomeService::class)->run($asOf);
+
+        $row = PaymentDetail::query()->where('user_id', $this->root->id)->firstOrFail();
+        $this->assertSame('1.00', number_format((float) $row->roi_amount, 2, '.', ''));
+        $this->assertSame('100.00', number_format((float) $row->binary_amount, 2, '.', ''));
+        $this->assertEquals(
+            number_format($before + 101.00, 2, '.', ''),
+            number_format((float) $this->root->fresh()->wallet_balance, 2, '.', '')
+        );
+
+        $carry = CarryForward::query()->where('user_id', $this->root->id)->whereDate('as_of', $asOf)->firstOrFail();
+        $this->assertSame('0.00', number_format((float) $carry->left_carry, 2, '.', ''));
+        $this->assertSame('0.00', number_format((float) $carry->right_carry, 2, '.', ''));
+    }
+
+    public function test_daily_binary_pay_is_capped_at_five_hundred_when_package_is_larger(): void
+    {
+        $elite = Package::query()->create([
+            'name' => 'Elite',
+            'amount' => '2000.00',
+            'roi_percent' => '1.00',
+            'is_active' => true,
+            'sort_order' => 6,
+        ]);
+        $this->root->update(['package_id' => $elite->id]);
+
+        $asOf = now()->toDateString();
+        BinaryTreeLeft::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '20000.00',
+            'business_date' => $asOf,
+        ]);
+        BinaryTreeRight::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '20000.00',
+            'business_date' => $asOf,
+        ]);
+
+        $before = (float) $this->root->fresh()->wallet_balance;
+        app(DailyIncomeService::class)->run($asOf);
+
+        $row = PaymentDetail::query()->where('user_id', $this->root->id)->firstOrFail();
+        $this->assertSame('20.00', number_format((float) $row->roi_amount, 2, '.', ''));
+        $this->assertSame('500.00', number_format((float) $row->binary_amount, 2, '.', ''));
+        $this->assertEquals(
+            number_format($before + 520.00, 2, '.', ''),
+            number_format((float) $this->root->fresh()->wallet_balance, 2, '.', '')
+        );
+    }
+
+    public function test_income_daily_command_defaults_to_yesterday_and_skips_duplicates(): void
+    {
+        $this->artisan('income:daily')
+            ->expectsOutputToContain('2026-08-13')
+            ->assertSuccessful();
+
+        $this->artisan('income:daily')
+            ->expectsOutputToContain('already calculated')
+            ->assertSuccessful();
+
+        $this->actingAs($this->admin)->post(route('admin.income.daily.run'))
+            ->assertRedirect()
+            ->assertSessionHas('info');
+
+        $this->actingAs($this->admin)->get(route('admin.income.daily'))
+            ->assertOk()
+            ->assertSee('2026-08-13', false)
+            ->assertSee('Already calculated', false);
+
+        $this->assertSame(1, DailyIncomeRun::query()->whereDate('as_of', '2026-08-13')->count());
+    }
+
+    public function test_roi_is_not_paid_on_sunday_or_monday(): void
+    {
+        $before = number_format((float) $this->root->wallet_balance, 2, '.', '');
+
+        foreach (['2026-08-16', '2026-08-17'] as $asOf) {
+            app(DailyIncomeService::class)->run($asOf);
+            $this->assertSame(
+                0,
+                PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->count()
+            );
+            $this->assertSame(
+                0,
+                WalletTransaction::query()->where('user_id', $this->root->id)->where('reason', 'daily_roi')->count()
+            );
+        }
+
+        $this->assertEquals($before, number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+    }
+
+    public function test_roi_is_paid_on_saturday(): void
+    {
+        $asOf = '2026-08-15';
+        app(DailyIncomeService::class)->run($asOf);
+
+        $row = PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->firstOrFail();
+        $this->assertSame('1.00', number_format((float) $row->roi_amount, 2, '.', ''));
+    }
+
+    public function test_sunday_skips_roi_but_still_pays_binary_and_referral(): void
+    {
+        $asOf = '2026-08-16';
+
+        BinaryTreeLeft::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '100.00',
+            'business_date' => $asOf,
+        ]);
+        BinaryTreeRight::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '100.00',
+            'business_date' => $asOf,
+        ]);
+        ReferralIncome::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '100.00',
+            'earned_on' => $asOf,
+        ]);
+
+        $before = (float) $this->root->fresh()->wallet_balance;
+        app(DailyIncomeService::class)->run($asOf);
+
+        $row = PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->firstOrFail();
+        $this->assertSame('0.00', number_format((float) $row->roi_amount, 2, '.', ''));
+        $this->assertSame('5.00', number_format((float) $row->binary_amount, 2, '.', ''));
+        $this->assertSame('10.00', number_format((float) $row->referral_amount, 2, '.', ''));
+        $this->assertEquals(
+            number_format($before + 15.00, 2, '.', ''),
+            number_format((float) $this->root->fresh()->wallet_balance, 2, '.', '')
+        );
     }
 
     public function test_wallet_writes_ledger_rows(): void

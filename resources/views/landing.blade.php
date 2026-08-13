@@ -68,7 +68,7 @@
                         <p class="package-amount">${{ number_format($amount, 0) }}</p>
                         <p class="package-label">{{ $package->name ?? 'Package' }}</p>
                         <ul>
-                            <li>1% daily ROI (Mon–Fri)</li>
+                            <li>1% daily ROI (Tue–Sat)</li>
                             <li>Binary cap ${{ number_format($amount, 0) }}/day</li>
                             <li>USDT activation</li>
                         </ul>
@@ -91,27 +91,27 @@
                     <img src="{{ asset('landing/img/icon/crypto_icon01.svg') }}" alt="" width="64" height="64" loading="lazy" decoding="async">
                     <h3>Daily <span>ROI</span></h3>
                     <p class="income-stat">1% daily</p>
-                    <p>Credited Monday through Friday on your activated package.</p>
+                    <p>Credited Tuesday through Saturday on your activated package.</p>
                 </article>
                 <article class="card income-card">
                     <img src="{{ asset('landing/img/icon/crypto_icon02.svg') }}" alt="" width="64" height="64" loading="lazy" decoding="async">
                     <h3>Direct <span>referral</span></h3>
-                    <p class="income-stat">10% instant</p>
-                    <p>Earn a 10% referral bonus when someone you invite activates a package.</p>
+                    <p class="income-stat">10% daily</p>
+                    <p>Earn 10% of referred package volume, paid with the daily income run.</p>
                 </article>
                 <article class="card income-card">
                     <img src="{{ asset('landing/img/icon/crypto_icon03.svg') }}" alt="" width="64" height="64" loading="lazy" decoding="async">
                     <h3>Binary <span>income</span></h3>
-                    <p class="income-stat">10% commission</p>
-                    <p>Build left and right teams and earn matching binary volume.</p>
+                    <p class="income-stat">5% matching</p>
+                    <p>Build left and right teams and earn 5% of the weaker-side binary volume.</p>
                 </article>
             </div>
             <div class="market-panel mt-panel">
                 <h3>Daily binary capping</h3>
-                <p class="lede mt-sm">Your daily binary cap equals your activated package amount.</p>
+                <p class="lede mt-sm">Daily binary is capped at your package amount and $500, whichever is lower.</p>
                 <ul class="market-list">
-                    <li><span>$500 package</span><strong>Up to $500 / day</strong></li>
-                    <li><span>$2,000 package</span><strong>Up to $2,000 / day</strong></li>
+                    <li><span>$100 package</span><strong>Up to $100 / day</strong></li>
+                    <li><span>$2,000 package</span><strong>Up to $500 / day</strong></li>
                 </ul>
             </div>
         </div>
@@ -227,7 +227,7 @@
                     <article class="step">
                         <div class="num">03</div>
                         <h3>Earn daily <span>ROI</span></h3>
-                        <p>Receive 1% daily ROI Monday to Friday on your package.</p>
+                        <p>Receive 1% daily ROI Tuesday through Saturday on your package.</p>
                     </article>
                     <article class="step">
                         <div class="num">04</div>
@@ -248,15 +248,15 @@
                 <div class="faq-list">
                     <details open>
                         <summary>How does daily ROI work?</summary>
-                        <p>Activated packages earn 1% daily ROI, credited Monday through Friday.</p>
+                        <p>Activated packages earn 1% daily ROI, credited Tuesday through Saturday (Sunday and Monday are skipped).</p>
                     </details>
                     <details>
                         <summary>What is the referral bonus?</summary>
-                        <p>You receive a 10% instant referral bonus when a person you invite activates a package.</p>
+                        <p>When someone you invite activates a package, the full package amount is stored for you. Daily income pays 10% of that day's stored referral volume.</p>
                     </details>
                     <details>
                         <summary>How is binary income capped?</summary>
-                        <p>Daily binary income is capped at an amount equal to your activated package (example: $500 package = $500 daily binary cap).</p>
+                        <p>Daily binary is 5% of matched (weaker-side) volume, then capped at your activated package amount and $500, whichever is lower.</p>
                     </details>
                     <details>
                         <summary>What are the withdrawal rules?</summary>
