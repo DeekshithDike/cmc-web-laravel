@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Models\BinaryTree;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -11,49 +13,73 @@ class TreeController extends Controller
 {
     public function __invoke(Request $request): View
     {
-        $user = $request->user()->load([
-            'binaryTree:id,users_id,left_user_id,right_user_id',
-            'binaryTree.leftUser:id,name',
-            'binaryTree.rightUser:id,name',
-            'package:id,name,amount',
-        ]);
-        $tree = $user->binaryTree;
-
-        $left = $tree?->leftUser;
-        $right = $tree?->rightUser;
-
-        return view('customer.tree.index', [
-            'user' => $user,
-            'tree' => $tree,
-            'left' => $left,
-            'right' => $right,
-            'leftLink' => url('/customer/register?placementID='.$user->id.'&position=left'),
-            'rightLink' => url('/customer/register?placementID='.$user->id.'&position=right'),
-        ]);
+        return $this->renderTree((int) $request->user()->id, true);
     }
 
     public function show(Request $request, int $id): View
     {
-        $viewer = $request->user()->load('binaryTree');
-        $allowed = $viewer->id === $id
-            || $viewer->binaryTree?->left_user_id === $id
-            || $viewer->binaryTree?->right_user_id === $id;
-        abort_unless($allowed, 403);
+        $target = User::query()
+            ->whereKey($id)
+            ->where('role', UserRole::Customer)
+            ->firstOrFail();
 
-        $user = User::query()->with([
-            'binaryTree:id,users_id,left_user_id,right_user_id',
-            'binaryTree.leftUser:id,name',
-            'binaryTree.rightUser:id,name',
-            'package:id,name,amount',
-        ])->findOrFail($id);
+        return $this->renderTree((int) $target->id, $request->user()->id === $target->id);
+    }
+
+    private function renderTree(int $rootId, bool $isOwnTree): View
+    {
+        $root = User::query()->with('package:id,amount')->findOrFail($rootId);
+        $left1 = $this->childOf($rootId, 'left');
+        $right1 = $this->childOf($rootId, 'right');
+        $left2 = $left1 ? $this->childOf((int) $left1->users_id, 'left') : null;
+        $right2 = $left1 ? $this->childOf((int) $left1->users_id, 'right') : null;
+        $left3 = $right1 ? $this->childOf((int) $right1->users_id, 'left') : null;
+        $right3 = $right1 ? $this->childOf((int) $right1->users_id, 'right') : null;
 
         return view('customer.tree.index', [
-            'user' => $user,
-            'tree' => $user->binaryTree,
-            'left' => $user->binaryTree?->leftUser,
-            'right' => $user->binaryTree?->rightUser,
-            'leftLink' => url('/customer/register?placementID='.$user->id.'&position=left'),
-            'rightLink' => url('/customer/register?placementID='.$user->id.'&position=right'),
+            'isOwnTree' => $isOwnTree,
+            'parentId' => $rootId,
+            'parentName' => $root->name,
+            'parentAmount' => $root->package?->amount,
+            'leftChild1' => $left1,
+            'rightChild1' => $right1,
+            'leftChild2' => $left2,
+            'rightChild2' => $right2,
+            'leftChild3' => $left3,
+            'rightChild3' => $right3,
+            'inviteBase' => url('/customer/register'),
+            'brand' => config('citymax.name'),
         ]);
+    }
+
+    /**
+     * @return object{users_id:int,amount:?string}|null
+     */
+    private function childOf(int $parentId, string $position): ?object
+    {
+        $parentTree = BinaryTree::query()->where('users_id', $parentId)->first();
+        if (! $parentTree) {
+            return null;
+        }
+
+        $childId = $position === 'left'
+            ? $parentTree->left_user_id
+            : $parentTree->right_user_id;
+
+        if (! $childId) {
+            return null;
+        }
+
+        $child = User::query()->with('package:id,amount')->find($childId);
+        if (! $child) {
+            return null;
+        }
+
+        return (object) [
+            'users_id' => (int) $child->id,
+            'amount' => $child->package?->amount,
+            'is_power_id' => (bool) $child->is_power_id,
+            'is_active' => (bool) $child->is_active,
+        ];
     }
 }

@@ -266,7 +266,7 @@ class AllEndpointsAndUseCasesTest extends TestCase
         $this->actingAs($this->root)->get(route('customer.dashboard'))->assertOk();
         $this->actingAs($this->root)->get(route('customer.tree'))->assertOk();
         $this->actingAs($this->root)->get(route('customer.tree.show', $child->id))->assertOk();
-        $this->actingAs($this->root)->get(route('customer.tree.show', $this->admin->id))->assertForbidden();
+        $this->actingAs($this->root)->get(route('customer.tree.show', $this->admin->id))->assertNotFound();
         $this->actingAs($this->root)->get(route('customer.income.history'))->assertOk();
         $this->actingAs($this->root)->get(route('customer.withdrawals.create'))->assertOk();
         $this->actingAs($this->root)->get(route('customer.withdrawals.history'))->assertOk();

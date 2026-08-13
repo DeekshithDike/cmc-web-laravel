@@ -38,6 +38,8 @@ return [
         'customer_password' => env('SEED_CUSTOMER_PASSWORD'),
         'customer_phone' => env('SEED_CUSTOMER_PHONE', '0000000000'),
         'customer_country' => env('SEED_CUSTOMER_COUNTRY', 'US'),
+        // DummyPowerIdSeeder: chain this many on left and on right under root (reference: 50+50).
+        'dummy_power_ids_per_side' => (int) env('SEED_DUMMY_POWER_IDS_PER_SIDE', 100),
     ],
 
     'packages' => [

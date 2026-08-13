@@ -102,7 +102,7 @@
     </div>
 </header>
 
-<main id="main-content" class="pt-16 lg:pl-64 min-h-dvh transition-all duration-300">
+<main id="main-content" class="pt-16 lg:ml-64 min-h-dvh transition-all duration-300">
     <div class="p-4 sm:p-6 lg:p-8">
         <?php echo $__env->make('partials.alerts', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
         <?php echo $__env->yieldContent('content'); ?>

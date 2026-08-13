@@ -85,7 +85,7 @@ class MembershipService
         $this->assertSlotFree($parentId, TreePosition::from($position));
     }
 
-    public function createPowerId(int $parentId, int $sponsorId, string $position): User
+    public function createPowerId(int $parentId, int $sponsorId, string $position, bool $notifyCalc = true): User
     {
         $user = DB::transaction(function () use ($parentId, $sponsorId, $position) {
             $parent = User::query()->whereKey($parentId)->where('role', UserRole::Customer)->firstOrFail();
@@ -113,7 +113,9 @@ class MembershipService
             return $user;
         });
 
-        $this->calc->placeMember($this->placeMemberPayload($user, 'DUMMY'));
+        if ($notifyCalc) {
+            $this->calc->placeMember($this->placeMemberPayload($user, 'DUMMY'));
+        }
 
         return $user;
     }

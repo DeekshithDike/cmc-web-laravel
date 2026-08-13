@@ -199,9 +199,12 @@ class BinaryTreePlacementAndIncomeTest extends TestCase
         $this->actingAs($this->root)
             ->get(route('customer.tree'))
             ->assertOk()
-            ->assertSee('placementID='.$this->root->id, false)
-            ->assertSee('position=left', false)
-            ->assertDontSee('sponsorID=', false);
+            ->assertSee('Your ID: '.$this->root->id, false)
+            ->assertSee('fa-user', false)
+            ->assertSee('Add user', false)
+            ->assertSee('placementID%3D'.$this->root->id, false)
+            ->assertSee('position%3Dleft', false)
+            ->assertDontSee('sponsorID', false);
     }
 
     public function test_register_without_sponsor_query_defaults_to_placement(): void
