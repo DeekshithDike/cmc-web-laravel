@@ -15,7 +15,6 @@ class LandingController extends Controller
         $ogImage = asset('branding/icon-180.png');
         $referralPercent = (float) config('citymax.income.referral_percent');
         $binaryPercent = (float) config('citymax.income.binary_percent');
-        $binaryMax = (float) config('citymax.income.binary_max');
         $withdrawalMinimum = (float) config('citymax.withdrawal.minimum');
         $withdrawalFee = (float) config('citymax.withdrawal.fee');
         $supportEmail = (string) config('citymax.support_email', 'support@citymaxcrypto.com');
@@ -30,7 +29,6 @@ class LandingController extends Controller
             'withdrawalFee' => $withdrawalFee,
             'referralPercent' => $referralPercent,
             'binaryPercent' => $binaryPercent,
-            'binaryMax' => $binaryMax,
             'supportEmail' => $supportEmail,
             'seoTitle' => (string) config('citymax.seo.title'),
             'seoDescription' => (string) config('citymax.seo.description'),
@@ -47,7 +45,6 @@ class LandingController extends Controller
                 $supportEmail,
                 $referralLabel,
                 $binaryLabel,
-                $binaryMax,
                 $withdrawalMinimum,
                 $withdrawalFee,
             ),
@@ -91,7 +88,6 @@ class LandingController extends Controller
         string $supportEmail,
         string $referralLabel,
         string $binaryLabel,
-        float $binaryMax,
         float $withdrawalMinimum,
         float $withdrawalFee,
     ): array {
@@ -153,7 +149,7 @@ class LandingController extends Controller
                             'name' => 'How is binary income capped?',
                             'acceptedAnswer' => [
                                 '@type' => 'Answer',
-                                'text' => "Daily binary is {$binaryLabel}% of matched (weaker-side) volume, then capped at your activated package amount and \$".number_format($binaryMax, 0).', whichever is lower.',
+                                'text' => "Daily binary is {$binaryLabel}% of matched (weaker-side) volume, then capped at your activated package amount.",
                             ],
                         ],
                         [

@@ -105,10 +105,10 @@
             </div>
             <div class="market-panel mt-panel">
                 <h3>Daily binary capping</h3>
-                <p class="lede mt-sm">Daily binary is capped at your package amount and ${{ number_format($binaryMax, 0) }}, whichever is lower.</p>
+                <p class="lede mt-sm">Daily binary is capped at your activated package amount.</p>
                 <ul class="market-list">
                     <li><span>$100 package</span><strong>Up to $100 / day</strong></li>
-                    <li><span>$2,000 package</span><strong>Up to ${{ number_format($binaryMax, 0) }} / day</strong></li>
+                    <li><span>$2,000 package</span><strong>Up to $2,000 / day</strong></li>
                 </ul>
             </div>
         </div>
@@ -253,7 +253,7 @@
                     </details>
                     <details>
                         <summary>How is binary income capped?</summary>
-                        <p>Daily binary is {{ rtrim(rtrim(number_format($binaryPercent, 2), '0'), '.') }}% of matched (weaker-side) volume, then capped at your activated package amount and ${{ number_format($binaryMax, 0) }}, whichever is lower.</p>
+                        <p>Daily binary is {{ rtrim(rtrim(number_format($binaryPercent, 2), '0'), '.') }}% of matched (weaker-side) volume, then capped at your activated package amount.</p>
                     </details>
                     <details>
                         <summary>What are the withdrawal rules?</summary>

@@ -51,7 +51,6 @@ class MultiUserScaleAndUseCasesTest extends TestCase
             'payments.default_payout' => 'manual',
             'payments.nowpayments.api_key' => null,
             'citymax.income.binary_percent' => 5,
-            'citymax.income.binary_max' => 500,
             'citymax.income.referral_percent' => 10,
         ]);
 

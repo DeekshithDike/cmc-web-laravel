@@ -12,7 +12,7 @@
             @csrf
             <button class="btn btn-primary" @if($existing && $existing->status === 'completed') disabled @endif>Run previous day income</button>
         </form>
-        <p class="text-muted m-t-sm">Pays ROI (skipped Sunday and Monday), {{ rtrim(rtrim(number_format((float) config('citymax.income.binary_percent'), 2), '0'), '.') }}% binary matching (capped at package and ${{ number_format((float) config('citymax.income.binary_max'), 0) }}), and {{ rtrim(rtrim(number_format((float) config('citymax.income.referral_percent'), 2), '0'), '.') }}% of that day's stored referral package volume.</p>
+        <p class="text-muted m-t-sm">Pays ROI (skipped Sunday and Monday), {{ rtrim(rtrim(number_format((float) config('citymax.income.binary_percent'), 2), '0'), '.') }}% binary matching (capped at activated package amount), and {{ rtrim(rtrim(number_format((float) config('citymax.income.referral_percent'), 2), '0'), '.') }}% of that day's stored referral package volume.</p>
     </div>
 </div>
 <div class="ibox">

@@ -34,10 +34,9 @@ return [
     ],
 
     'income' => [
-        // Percents/caps come only from .env. ROI uses packages.roi_percent in the database.
+        // Percents come only from .env. ROI uses packages.roi_percent. Binary is capped at package amount.
         'referral_percent' => (float) env('INCOME_REFERRAL_PERCENT'),
         'binary_percent' => (float) env('INCOME_BINARY_PERCENT'),
-        'binary_max' => (float) env('INCOME_BINARY_MAX'),
         // Malaysia midnight — pays the calendar day that just ended.
         'run_at' => env('INCOME_RUN_AT', '00:00'),
         'timezone' => env('INCOME_TIMEZONE', 'Asia/Kuala_Lumpur'),

@@ -47,6 +47,5 @@
         <env name="MEMBERSHIP_EXPIRY_WARNING_DAYS" value="10"/>
         <env name="INCOME_REFERRAL_PERCENT" value="10"/>
         <env name="INCOME_BINARY_PERCENT" value="5"/>
-        <env name="INCOME_BINARY_MAX" value="500"/>
     </php>
 </phpunit>

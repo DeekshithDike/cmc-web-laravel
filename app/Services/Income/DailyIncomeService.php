@@ -55,7 +55,6 @@ class DailyIncomeService
         $processed = 0;
         $totalPaid = '0.00';
         $binaryPercent = (float) config('citymax.income.binary_percent');
-        $binaryMax = (float) config('citymax.income.binary_max');
         $referralPercent = (float) config('citymax.income.referral_percent');
 
         User::query()
@@ -71,9 +70,9 @@ class DailyIncomeService
             })
             ->with('package:id,amount,roi_percent')
             ->orderBy('id')
-            ->chunkById(200, function ($users) use ($asOf, $binaryPercent, $binaryMax, $referralPercent, &$processed, &$totalPaid) {
+            ->chunkById(200, function ($users) use ($asOf, $binaryPercent, $referralPercent, &$processed, &$totalPaid) {
                 foreach ($users as $user) {
-                    $paid = $this->payUserForDay($user, $asOf, $binaryPercent, $binaryMax, $referralPercent);
+                    $paid = $this->payUserForDay($user, $asOf, $binaryPercent, $referralPercent);
                     if ($paid !== null) {
                         $processed++;
                         $totalPaid = bcadd($totalPaid, $paid, 2);
@@ -135,7 +134,7 @@ class DailyIncomeService
         });
     }
 
-    private function payUserForDay(User $user, string $asOf, float $binaryPercent, float $binaryMax, float $referralPercent): ?string
+    private function payUserForDay(User $user, string $asOf, float $binaryPercent, float $referralPercent): ?string
     {
         $packageAmount = (float) ($user->package->amount ?? 0);
         $roiPercent = (float) ($user->package->roi_percent ?? 0);
@@ -143,7 +142,7 @@ class DailyIncomeService
             ? round($packageAmount * ($roiPercent / 100), 2)
             : 0.0;
 
-        $binary = $this->matchBinary($user, $asOf, $binaryPercent, $packageAmount, $binaryMax);
+        $binary = $this->matchBinary($user, $asOf, $binaryPercent, $packageAmount);
 
         $referralVolume = (float) ReferralIncome::query()
             ->where('user_id', $user->id)
@@ -214,7 +213,7 @@ class DailyIncomeService
     /**
      * @return array{pay: float, left: float, right: float, left_carry: float, right_carry: float}
      */
-    private function matchBinary(User $user, string $asOf, float $binaryPercent, float $packageCap, float $binaryMax): array
+    private function matchBinary(User $user, string $asOf, float $binaryPercent, float $packageCap): array
     {
         $leftToday = (float) BinaryTreeLeft::query()
             ->where('user_id', $user->id)
@@ -240,10 +239,6 @@ class DailyIncomeService
 
         if ($packageCap > 0 && $pay > $packageCap) {
             $pay = round($packageCap, 2);
-        }
-
-        if ($binaryMax > 0 && $pay > $binaryMax) {
-            $pay = round($binaryMax, 2);
         }
 
         return [

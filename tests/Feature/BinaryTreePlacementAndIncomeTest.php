@@ -46,7 +46,6 @@ class BinaryTreePlacementAndIncomeTest extends TestCase
             'payments.nowpayments.api_key' => null,
             'payments.nowpayments.ipn_secret' => null,
             'citymax.income.binary_percent' => 5,
-            'citymax.income.binary_max' => 500,
         ]);
 
         $this->package = Package::query()->create([
