@@ -617,6 +617,13 @@ class PaymentGatewayScenariosTest extends TestCase
             'payout_ref' => 'wd-item-9',
             'payout_provider' => 'nowpayments',
         ]);
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/payout') || str_contains($request->url(), 'validate') || str_contains($request->url(), 'verify')) {
+                return false;
+            }
+
+            return ($request->data()['withdrawals'][0]['currency'] ?? null) === 'usdtbsc';
+        });
 
         $this->postSignedPayoutIpn([
             'id' => 'wd-item-9',
@@ -626,8 +633,8 @@ class PaymentGatewayScenariosTest extends TestCase
         ])->assertOk();
 
         $this->assertSame(WithdrawalStatus::Declined, $wd->fresh()->status);
-        // refund amount - fee = 20
-        $this->assertEqualsWithDelta($afterDebit + 20, (float) $this->root->fresh()->wallet_balance, 0.01);
+        $refund = (float) $wd->amount - (float) $wd->fee;
+        $this->assertEqualsWithDelta($afterDebit + $refund, (float) $this->root->fresh()->wallet_balance, 0.01);
 
         // Duplicate failed IPN must not double-refund
         $balance = (float) $this->root->fresh()->wallet_balance;

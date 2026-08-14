@@ -7,6 +7,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Services\Auth\MemberCredentialsNotifier;
 use App\Services\Membership\MembershipService;
+use App\Support\AdminList;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -15,15 +16,36 @@ use Throwable;
 
 class PowerIdController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $q = AdminList::search($request);
+
         $powerIds = User::query()
             ->where('is_power_id', true)
             ->where('is_active', false)
-            ->latest()
-            ->paginate(25);
+            ->when($q !== '', function ($query) use ($q) {
+                if (AdminList::isNumericId($q)) {
+                    $id = (int) $q;
+                    $query->where(function ($inner) use ($id) {
+                        $inner->where('id', $id)
+                            ->orWhere('parent_id', $id)
+                            ->orWhere('sponsor_id', $id);
+                    });
 
-        return view('admin.power.index', compact('powerIds'));
+                    return;
+                }
+
+                $like = AdminList::like($q);
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+            })
+            ->latest('id')
+            ->paginate(AdminList::perPage($request))
+            ->withQueryString();
+
+        return view('admin.power.index', compact('powerIds', 'q'));
     }
 
     public function store(Request $request, MembershipService $membership): RedirectResponse

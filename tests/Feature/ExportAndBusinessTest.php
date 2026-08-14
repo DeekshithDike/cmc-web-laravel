@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enums\TreePosition;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Enums\WithdrawalStatus;
@@ -65,7 +64,7 @@ class ExportAndBusinessTest extends TestCase
             'package_id' => $package->id,
         ])->assertRedirect();
 
-        $rows = app(BusinessVolumeService::class)->reportForDate(now()->toDateString());
+        $rows = app(BusinessVolumeService::class)->paginateReportForDate(now()->toDateString());
         $this->assertTrue($rows->contains(fn ($r) => $r['user_id'] === $root->id && $r['left'] === '100.00'));
     }
 

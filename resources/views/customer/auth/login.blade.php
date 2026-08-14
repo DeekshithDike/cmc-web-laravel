@@ -11,13 +11,13 @@
 
 @include('partials.alerts')
 
-<form class="space-y-4 mt-6" method="POST" action="{{ route('customer.login.submit') }}">
+<form class="space-y-4 mt-6" method="POST" action="/customer/login">
     @csrf
     <div>
-        <label for="login_id" class="block text-xs font-medium text-text-secondary mb-1.5">Login ID</label>
+        <label for="login_id" class="block text-xs font-medium text-text-secondary mb-1.5">Customer ID</label>
         <div class="relative">
             <i class="ph ph-identification-badge absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
-            <input type="text" id="login_id" name="login_id" value="{{ old('login_id') }}" required autofocus autocomplete="username" placeholder="Your member ID"
+            <input type="text" id="login_id" name="login_id" value="{{ old('login_id') }}" required autofocus autocomplete="username" placeholder="Your Customer ID"
                 class="w-full h-11 pl-9 pr-3 rounded-xl bg-subtle border border-border text-sm text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors">
         </div>
     </div>

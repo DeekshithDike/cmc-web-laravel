@@ -7,7 +7,7 @@
         <span class="cmc-stat-icon"><i class="ph ph-key"></i></span>
         <div>
             <h2 class="text-base font-semibold text-heading m-0">Account security</h2>
-            <p class="text-xs text-muted m-0">Update your login code for this member ID</p>
+            <p class="text-xs text-muted m-0">Update your login code for this Customer ID</p>
         </div>
     </div>
     <form method="POST" action="{{ route('customer.password.update') }}" class="space-y-4">

@@ -9,7 +9,7 @@
 </div>
 <h2 class="text-xl font-bold text-heading text-center mt-3">Registration successful</h2>
 <p class="text-sm text-muted text-center mt-2">
-    Your account will be activated within an hour. Login ID and Password will be sent to your registered email address after activation.
+    Your account will be activated within an hour. Customer ID and Password will be sent to your registered email address after activation.
 </p>
 
 @if ($transaction && $transaction->status === 'completed' && ! empty($transaction->meta['credentials_token']))

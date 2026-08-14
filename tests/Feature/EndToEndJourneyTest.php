@@ -197,9 +197,8 @@ class EndToEndJourneyTest extends TestCase
         ])->assertOk()->assertJson(['ok' => true]);
         $this->assertSame('completed', $started['transaction']->fresh()->status);
 
-        // 7) Customer login + pages (clear admin session first)
-        $this->post(route('admin.logout'));
-        $this->assertGuest();
+        // 7) Customer login + pages (admin session stays independent)
+        $this->assertAuthenticatedAs($this->admin, 'admin');
 
         $this->post(route('customer.login.submit'), [
             'login_id' => $this->root->id,
@@ -253,7 +252,8 @@ class EndToEndJourneyTest extends TestCase
             ->assertOk();
 
         // 12) Brand never leaks demo/template names on key pages
-        auth()->logout();
+        auth('admin')->logout();
+        auth('customer')->logout();
         foreach ([
             route('landing'),
             route('admin.login'),
@@ -295,7 +295,7 @@ class EndToEndJourneyTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame(WithdrawalStatus::Declined, $wd->fresh()->status);
-        // refund = amount - fee = 25
-        $this->assertEqualsWithDelta($balanceAfterRequest + 25, (float) $this->root->fresh()->wallet_balance, 0.01);
+        // refund = amount - fee (fee from WITHDRAWAL_FEE env) = 30 - 2 = 28
+        $this->assertEqualsWithDelta($balanceAfterRequest + 28, (float) $this->root->fresh()->wallet_balance, 0.01);
     }
 }

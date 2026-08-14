@@ -13,17 +13,20 @@ class TreeController extends Controller
 {
     public function __invoke(Request $request): View
     {
-        return $this->renderTree((int) $request->user()->id, true);
+        return $this->renderTree((int) $request->user('customer')->id, true);
     }
 
     public function show(Request $request, int $id): View
     {
+        $viewerId = (int) $request->user('customer')->id;
         $target = User::query()
             ->whereKey($id)
             ->where('role', UserRole::Customer)
             ->firstOrFail();
 
-        return $this->renderTree((int) $target->id, $request->user()->id === $target->id);
+        abort_unless($this->isOwnOrDownline($viewerId, (int) $target->id), 404);
+
+        return $this->renderTree((int) $target->id, $viewerId === (int) $target->id);
     }
 
     private function renderTree(int $rootId, bool $isOwnTree): View
@@ -50,6 +53,33 @@ class TreeController extends Controller
             'inviteBase' => url('/customer/register'),
             'brand' => config('citymax.name'),
         ]);
+    }
+
+    private function isOwnOrDownline(int $viewerId, int $targetId): bool
+    {
+        if ($viewerId === $targetId) {
+            return true;
+        }
+
+        $currentId = $targetId;
+        for ($depth = 0; $depth < 512; $depth++) {
+            $parentId = User::query()
+                ->whereKey($currentId)
+                ->where('role', UserRole::Customer)
+                ->value('parent_id');
+
+            if ($parentId === null) {
+                return false;
+            }
+
+            if ((int) $parentId === $viewerId) {
+                return true;
+            }
+
+            $currentId = (int) $parentId;
+        }
+
+        return false;
     }
 
     /**

@@ -241,7 +241,7 @@ class MoneyPathAndIncomeTest extends TestCase
         $response->assertSessionMissing('success');
 
         $page = $this->get($location);
-        $page->assertOk()->assertSee('Login ID', false);
+        $page->assertOk()->assertSee('Customer ID', false);
         $this->get($location)->assertNotFound();
     }
 

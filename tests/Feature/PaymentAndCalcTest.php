@@ -213,6 +213,13 @@ class PaymentAndCalcTest extends TestCase
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/payout/validate-address'));
         Http::assertSent(fn ($request) => str_ends_with(rtrim($request->url(), '/'), '/payout/5000000713/verify'));
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/payout') || str_contains($request->url(), 'validate') || str_contains($request->url(), 'verify')) {
+                return false;
+            }
+
+            return ($request->data()['withdrawals'][0]['currency'] ?? null) === 'usdttrc20';
+        });
     }
 
     public function test_payout_webhook_is_csrf_exempt(): void

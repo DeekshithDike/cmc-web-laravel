@@ -11,7 +11,7 @@ class EnsureUserIsAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = $request->user('admin');
 
         if (! $user || $user->role !== UserRole::Admin) {
             abort(403, 'Admin access required.');

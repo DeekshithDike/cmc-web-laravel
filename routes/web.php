@@ -3,10 +3,13 @@
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\CustomerLoginController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('landing');
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 
 Route::get('/credentials/{token}', [\App\Http\Controllers\Auth\CredentialsController::class, 'show'])
     ->where('token', '[A-Za-z0-9]{32,64}')
@@ -33,12 +36,14 @@ Route::get('/customer/payment/success', [\App\Http\Controllers\Auth\PaymentCheck
 Route::get('/customer/payment/cancel', [\App\Http\Controllers\Auth\PaymentCheckoutController::class, 'cancel'])
     ->name('customer.payment.cancel');
 
-Route::middleware('guest')->group(function () {
+Route::middleware('guest:admin')->group(function () {
     Route::get('/admin/login', [AdminLoginController::class, 'show'])->name('admin.login');
     Route::post('/admin/login', [AdminLoginController::class, 'login'])
         ->middleware('throttle:login')
         ->name('admin.login.submit');
+});
 
+Route::middleware('guest:customer')->group(function () {
     Route::get('/customer/login', [CustomerLoginController::class, 'show'])->name('customer.login');
     Route::post('/customer/login', [CustomerLoginController::class, 'login'])
         ->middleware('throttle:login')

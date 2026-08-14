@@ -10,8 +10,8 @@
             <div class="form-group"><label>Email</label><input class="form-control" type="email" name="email" value="{{ old('email') }}" required></div>
             <div class="form-group"><label>Phone</label><input class="form-control" name="phone" value="{{ old('phone') }}"></div>
             <div class="form-group"><label>Country</label><input class="form-control" name="country" value="{{ old('country') }}"></div>
-            <div class="form-group"><label>Sponsor ID</label><input class="form-control" type="number" name="sponsor_id" value="{{ old('sponsor_id', 2) }}" required></div>
-            <div class="form-group"><label>Placement ID</label><input class="form-control" type="number" name="parent_id" value="{{ old('parent_id', 2) }}" required></div>
+            <div class="form-group"><label>Sponsor ID</label><input class="form-control" type="number" name="sponsor_id" value="{{ old('sponsor_id', config('citymax.seed.customer_id')) }}" required></div>
+            <div class="form-group"><label>Placement ID</label><input class="form-control" type="number" name="parent_id" value="{{ old('parent_id', config('citymax.seed.customer_id')) }}" required></div>
             <div class="form-group"><label>Position</label>
                 <select class="form-control" name="position" required>
                     <option value="left" @selected(old('position')==='left')>Left</option>

@@ -29,7 +29,7 @@ class LoginService
             ]);
         }
 
-        Auth::login($user, $remember);
+        Auth::guard('admin')->login($user, $remember);
         request()->session()->regenerate();
 
         return $user;
@@ -66,17 +66,20 @@ class LoginService
             ]);
         }
 
-        Auth::login($user, $remember);
+        Auth::guard('customer')->login($user, $remember);
         request()->session()->regenerate();
 
         return $user;
     }
 
-    public function logout(): void
+    public function logoutAdmin(): void
     {
-        Auth::logout();
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
+        Auth::guard('admin')->logout();
+    }
+
+    public function logoutCustomer(): void
+    {
+        Auth::guard('customer')->logout();
     }
 
     private function passwordMatches(?User $user, string $password): bool

@@ -4,6 +4,26 @@
 @section('heading', 'Dashboard')
 
 @section('content')
+@php
+    $malaysiaNow = now('Asia/Kuala_Lumpur');
+@endphp
+<div class="mb-5 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3 min-w-0">
+        <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-white text-xl flex-shrink-0">
+            <i class="ph ph-clock"></i>
+        </span>
+        <div class="min-w-0">
+            <p class="text-[11px] uppercase tracking-wider font-semibold text-primary">Server time · Malaysia</p>
+            <p id="cmc-server-clock" class="text-lg sm:text-xl font-bold text-heading tabular-nums" data-server-ms="{{ $malaysiaNow->getTimestampMs() }}">
+                {{ $malaysiaNow->format('l, d F Y · h:i:s A') }}
+            </p>
+        </div>
+    </div>
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-primary text-white px-3 py-1 text-xs font-semibold">
+        <i class="ph ph-map-pin"></i> Malaysia (GMT+8)
+    </span>
+</div>
+
 @if ($showExpiryWarning)
     <div class="mb-5 rounded-2xl border border-danger/30 bg-danger/10 text-danger px-4 py-3 text-sm flex items-start gap-3">
         <i class="ph ph-warning-circle text-xl mt-0.5"></i>
@@ -20,7 +40,7 @@
             <div>
                 <p class="text-xs uppercase tracking-wider text-white/70 mb-1">Available balance</p>
                 <p class="text-4xl sm:text-5xl font-bold tracking-tight">${{ number_format((float) $user->wallet_balance, 2) }}</p>
-                <p class="mt-2 text-sm text-white/75">Member ID {{ $user->id }} · {{ $user->name }}</p>
+                <p class="mt-2 text-sm text-white/75">Customer ID {{ $user->id }} · {{ $user->name }}</p>
             </div>
             <div class="text-right">
                 <span class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/15 text-2xl">
@@ -31,7 +51,7 @@
                         <i class="ph ph-currency-circle-dollar"></i> USDT
                     </span>
                 </p>
-                <p class="text-xs text-white/70 mt-1.5">ERC-20 / BEP-20</p>
+                <p class="text-xs text-white/70 mt-1.5">TRC-20 / BEP-20</p>
             </div>
         </div>
         <div class="mt-6 flex flex-wrap gap-2">
@@ -74,7 +94,7 @@
         ['Overall Right', '$'.$rightBusinessTotal, 'ph-chart-bar', 'is-accent'],
         ['Today Referral', '$'.$referralToday, 'ph-users', 'is-warn'],
         ['Overall Referral', '$'.$referralTotal, 'ph-users-three', 'is-warn'],
-        ['Your ID', (string) $user->id, 'ph-identification-badge', ''],
+        ['Customer ID', (string) $user->id, 'ph-identification-badge', ''],
         ['Package', '$'.number_format((float) ($user->package->amount ?? 0), 2), 'ph-package', ''],
     ] as [$label, $value, $icon, $tone])
     <div class="cmc-stat-card {{ $tone }} p-4">
@@ -123,3 +143,32 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    const el = document.getElementById('cmc-server-clock');
+    if (!el) return;
+    const start = Number(el.dataset.serverMs);
+    const pageStart = Date.now();
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kuala_Lumpur',
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+    });
+    function tick() {
+        const parts = fmt.formatToParts(new Date(start + (Date.now() - pageStart)));
+        const get = (type) => parts.find((p) => p.type === type)?.value || '';
+        el.textContent = get('weekday') + ', ' + get('day') + ' ' + get('month') + ' ' + get('year') + ' · ' + get('hour') + ':' + get('minute') + ':' + get('second') + ' ' + get('dayPeriod').toUpperCase();
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
+@endpush

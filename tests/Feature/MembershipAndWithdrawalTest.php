@@ -84,14 +84,39 @@ class MembershipAndWithdrawalTest extends TestCase
         });
     }
 
-    public function test_withdrawal_rejects_non_evm_usdt_address(): void
+    public function test_withdrawal_rejects_invalid_usdt_address(): void
     {
         ['root' => $root] = $this->seedRoot();
 
         $this->actingAs($root)->from(route('customer.withdrawals.create'))->post(route('customer.withdrawals.store'), [
             'amount' => 25,
-            'wallet_address' => 'TEmGwPeRTPiLFLVfBxXkSP91yc5GMNQhfS',
+            'wallet_address' => 'not-a-wallet',
         ])->assertRedirect()->assertSessionHas('error');
+    }
+
+    public function test_withdrawal_accepts_trc20_and_bep20_addresses(): void
+    {
+        ['root' => $root] = $this->seedRoot();
+
+        $this->actingAs($root)->post(route('customer.withdrawals.store'), [
+            'amount' => 25,
+            'wallet_address' => 'TEmGwPeRTPiLFLVfBxXkSP91yc5GMNQhfS',
+        ])->assertRedirect(route('customer.withdrawals.history'));
+
+        $trc = Withdrawal::query()->latest('id')->firstOrFail();
+        $this->assertSame('trc20', $trc->meta['network'] ?? null);
+        $this->assertSame('usdttrc20', $trc->meta['payout_currency'] ?? null);
+
+        $root->update(['wallet_balance' => '100.00']);
+
+        $this->actingAs($root)->post(route('customer.withdrawals.store'), [
+            'amount' => 25,
+            'wallet_address' => self::USDT_EVM_ADDRESS,
+        ])->assertRedirect(route('customer.withdrawals.history'));
+
+        $bep = Withdrawal::query()->latest('id')->firstOrFail();
+        $this->assertSame('bep20', $bep->meta['network'] ?? null);
+        $this->assertSame('usdtbsc', $bep->meta['payout_currency'] ?? null);
     }
 
     public function test_customer_can_request_and_admin_can_complete_withdrawal(): void

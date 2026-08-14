@@ -11,6 +11,7 @@ use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Payouts\PayoutGatewayManager;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -34,6 +35,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Paginator::useBootstrapFour();
+
         RateLimiter::for('login', function (Request $request) {
             $identity = strtolower((string) $request->input('email', $request->input('login_id', 'guest')));
 

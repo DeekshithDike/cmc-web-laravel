@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex,nofollow">
     <title>@yield('title', 'Admin') — {{ config('citymax.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('branding/favicon-32.png') }}">
     <link href="{{ asset('admin-assets/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -22,7 +23,7 @@
                     <div class="dropdown profile-element">
                         <img alt="logo" class="m-b-md" src="{{ asset('branding/logo-light-header.png') }}" style="max-height:40px">
                         <span class="clear">
-                            <span class="block m-t-xs"><strong class="font-bold text-white">{{ auth()->user()->name }}</strong></span>
+                            <span class="block m-t-xs"><strong class="font-bold text-white">{{ auth('admin')->user()->name }}</strong></span>
                             <span class="text-muted text-xs block">Administrator</span>
                         </span>
                     </div>
@@ -103,13 +104,13 @@
     </div>
 </div>
 
-<script src="{{ asset('admin-assets/js/jquery-3.1.1.min.js') }}"></script>
-<script src="{{ asset('admin-assets/js/popper.min.js') }}"></script>
-<script src="{{ asset('admin-assets/js/bootstrap.js') }}"></script>
-<script src="{{ asset('admin-assets/js/plugins/metisMenu/jquery.metisMenu.js') }}"></script>
-<script src="{{ asset('admin-assets/js/plugins/slimscroll/jquery.slimscroll.min.js') }}"></script>
-<script src="{{ asset('admin-assets/js/custom.js') }}"></script>
-<script src="{{ asset('admin-assets/js/plugins/pace/pace.min.js') }}"></script>
+<script src="{{ asset_ver('admin-assets/js/jquery-3.1.1.min.js') }}"></script>
+<script src="{{ asset_ver('admin-assets/js/popper.min.js') }}"></script>
+<script src="{{ asset_ver('admin-assets/js/bootstrap.js') }}"></script>
+<script src="{{ asset_ver('admin-assets/js/plugins/metisMenu/jquery.metisMenu.js') }}"></script>
+<script src="{{ asset_ver('admin-assets/js/plugins/slimscroll/jquery.slimscroll.min.js') }}"></script>
+<script src="{{ asset_ver('admin-assets/js/custom.js') }}"></script>
+<script src="{{ asset_ver('admin-assets/js/plugins/pace/pace.min.js') }}"></script>
 @stack('scripts')
 </body>
 </html>

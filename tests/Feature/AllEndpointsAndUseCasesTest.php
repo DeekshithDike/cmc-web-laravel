@@ -94,8 +94,8 @@ class AllEndpointsAndUseCasesTest extends TestCase
 
     public function test_role_boundaries(): void
     {
-        $this->actingAs($this->root)->get(route('admin.dashboard'))->assertForbidden();
-        $this->actingAs($this->admin)->get(route('customer.dashboard'))->assertForbidden();
+        $this->actingAs($this->root)->get(route('admin.dashboard'))->assertRedirect(route('admin.login'));
+        $this->actingAs($this->admin)->get(route('customer.dashboard'))->assertRedirect(route('customer.login'));
 
         $expired = User::query()->create([
             'name' => 'Expired',
@@ -240,7 +240,7 @@ class AllEndpointsAndUseCasesTest extends TestCase
         ])->assertRedirect()->assertSessionHas('success');
 
         $this->post(route('admin.logout'))->assertRedirect(route('admin.login'));
-        $this->assertGuest();
+        $this->assertGuest('admin');
 
         $this->post(route('admin.login.submit'), [
             'email' => $this->admin->email,
@@ -275,6 +275,7 @@ class AllEndpointsAndUseCasesTest extends TestCase
         $this->actingAs($this->root)->from(route('customer.withdrawals.create'))->post(route('customer.withdrawals.store'), [
             'amount' => 5,
             'wallet_address' => self::USDT_EVM_ADDRESS,
+            'network' => 'erc20',
         ])->assertRedirect()->assertSessionHas('error');
 
         $this->actingAs($this->root)->post(route('customer.withdrawals.store'), [

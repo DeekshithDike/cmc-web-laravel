@@ -12,11 +12,11 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, BusinessVolumeService $volumes): View
     {
-        $user = $request->user()->load('package:id,amount');
+        $user = $request->user('customer')->load('package:id,amount');
         $volume = $volumes->volumeForUser((int) $user->id);
         $today = now()->toDateString();
 
-        $warningDays = (int) config('citymax.membership.expiry_warning_days', 10);
+        $warningDays = (int) config('citymax.membership.expiry_warning_days');
         $daysLeft = null;
         $showExpiryWarning = false;
 
@@ -46,7 +46,7 @@ class DashboardController extends Controller
         }
 
         $volume = (float) $query->sum('amount');
-        $percent = (float) config('citymax.income.referral_percent', 10);
+        $percent = (float) config('citymax.income.referral_percent');
         $paid = $volume > 0 && $percent > 0
             ? round($volume * ($percent / 100), 2)
             : 0.0;

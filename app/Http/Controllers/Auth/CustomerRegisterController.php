@@ -8,8 +8,11 @@ use App\Models\Package;
 use App\Models\User;
 use App\Services\Membership\MembershipService;
 use App\Services\Payments\PaymentService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use InvalidArgumentException;
@@ -48,12 +51,12 @@ class CustomerRegisterController extends Controller
             'position' => $position,
             'sponsorId' => $sponsorId,
             'powerId' => null,
-            'formAction' => route('customer.register.save'),
+            'formAction' => route('customer.register.save', absolute: false),
             'heading' => 'Join '.config('citymax.name'),
         ]);
     }
 
-    public function store(Request $request, MembershipService $membership, PaymentService $payments): RedirectResponse
+    public function store(Request $request, MembershipService $membership, PaymentService $payments): RedirectResponse|JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:60'],
@@ -65,12 +68,22 @@ class CustomerRegisterController extends Controller
 
         $invite = $this->resolvedInvite($request);
         if ($invite === null) {
-            return redirect()->route('landing')->with('error', 'Registration requires a valid invite link.');
+            Log::warning('Customer register rejected: invite missing', [
+                'email' => $request->input('email'),
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->failCheckout('Registration requires a valid invite link.', 'landing');
         }
 
         $package = Package::query()->whereKey((int) $request->input('package_id'))->where('is_active', true)->first();
         if (! $package) {
-            return back()->withInput()->with('error', 'Package not found.');
+            Log::warning('Customer register rejected: package not found', [
+                'package_id' => $request->input('package_id'),
+                'email' => $request->input('email'),
+            ]);
+
+            return $this->failCheckout('Selected package is not available. Please choose another package.');
         }
 
         $data = [
@@ -99,17 +112,21 @@ class CustomerRegisterController extends Controller
                 'cancel_url' => route('customer.payment.cancel'),
                 'return_url' => route('customer.payment.success', ['ref' => $orderId]),
             ]);
-        } catch (InvalidArgumentException|Throwable $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            return $this->checkoutFailed($e, [
+                'flow' => 'invite_register',
+                'order' => $orderId,
+                'email' => $data['email'],
+                'parent_id' => $data['parent_id'],
+                'position' => $data['position'],
+                'package_id' => $data['package_id'],
+            ]);
         }
 
-        $request->session()->forget('invite');
-
-        if (! empty($result['redirect_url'])) {
-            return redirect()->away((string) $result['redirect_url']);
-        }
-
-        return redirect()->route('customer.payment.success', ['ref' => $orderId]);
+        return $this->redirectToCheckout($payments, $result, $orderId, [
+            'flow' => 'invite_register',
+            'email' => $data['email'],
+        ], 'invite');
     }
 
     /**
@@ -160,12 +177,12 @@ class CustomerRegisterController extends Controller
                 : (string) $power->position,
             'sponsorId' => $power->sponsor_id,
             'powerId' => $power->id,
-            'formAction' => route('customer.register.special.save'),
+            'formAction' => route('customer.register.special.save', absolute: false),
             'heading' => 'Activate Power ID',
         ]);
     }
 
-    public function specialStore(Request $request, PaymentService $payments): RedirectResponse
+    public function specialStore(Request $request, PaymentService $payments): RedirectResponse|JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:60'],
@@ -182,12 +199,23 @@ class CustomerRegisterController extends Controller
             ->where('is_active', false)
             ->first();
         if (! $power) {
-            return redirect()->route('landing')->with('error', 'Invalid Power ID link.');
+            Log::warning('Power ID register rejected: invalid or already active', [
+                'power_id' => $sessionPowerId,
+                'email' => $request->input('email'),
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->failCheckout('This Power ID link is invalid or already activated.', 'landing');
         }
 
         $package = Package::query()->whereKey((int) $request->input('package_id'))->where('is_active', true)->first();
         if (! $package) {
-            return back()->withInput()->with('error', 'Package not found.');
+            Log::warning('Power ID register rejected: package not found', [
+                'package_id' => $request->input('package_id'),
+                'email' => $request->input('email'),
+            ]);
+
+            return $this->failCheckout('Selected package is not available. Please choose another package.');
         }
 
         $orderId = 'CMC-PWR-'.Str::upper(Str::random(12));
@@ -210,17 +238,21 @@ class CustomerRegisterController extends Controller
                 'cancel_url' => route('customer.payment.cancel'),
                 'return_url' => route('customer.payment.success', ['ref' => $orderId]),
             ]);
-        } catch (InvalidArgumentException|Throwable $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            return $this->checkoutFailed($e, [
+                'flow' => 'power_register',
+                'order' => $orderId,
+                'email' => $request->input('email'),
+                'power_id' => $power->id,
+                'package_id' => (int) $package->id,
+            ]);
         }
 
-        $request->session()->forget('power_activation');
-
-        if (! empty($result['redirect_url'])) {
-            return redirect()->away((string) $result['redirect_url']);
-        }
-
-        return redirect()->route('customer.payment.success', ['ref' => $orderId]);
+        return $this->redirectToCheckout($payments, $result, $orderId, [
+            'flow' => 'power_register',
+            'email' => $request->input('email'),
+            'power_id' => $power->id,
+        ], 'power_activation');
     }
 
     private function resolvePowerTarget(mixed $target): ?User
@@ -240,5 +272,130 @@ class CustomerRegisterController extends Controller
             ->where('is_power_id', true)
             ->where('is_active', false)
             ->first();
+    }
+
+    /**
+     * @param  array{transaction?: mixed, redirect_url?: string|null, message?: string}  $result
+     * @param  array<string, mixed>  $context
+     */
+    private function redirectToCheckout(
+        PaymentService $payments,
+        array $result,
+        string $orderId,
+        array $context,
+        ?string $forgetSessionKey = null,
+    ): RedirectResponse|JsonResponse {
+        $url = trim((string) ($result['redirect_url'] ?? ''));
+        if ($url !== '' && $this->validCheckoutUrl($url)) {
+            return $this->checkoutSuccess($url, $forgetSessionKey);
+        }
+
+        if ($payments->requiresLiveCheckout()) {
+            return $this->checkoutFailed(new \RuntimeException('Payment checkout URL was missing or invalid after invoice create.'), [
+                ...$context,
+                'order' => $orderId,
+            ]);
+        }
+
+        return $this->checkoutSuccess(
+            route('customer.payment.success', ['ref' => $orderId]),
+            $forgetSessionKey
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function checkoutFailed(Throwable $e, array $context): RedirectResponse|JsonResponse
+    {
+        $ref = 'REG-'.strtoupper(Str::random(6));
+
+        Log::error('Customer checkout failed', [
+            'ref' => $ref,
+            'type' => $e::class,
+            'error' => $e->getMessage(),
+            'previous' => $e->getPrevious()?->getMessage(),
+            'file' => $e->getFile().':'.$e->getLine(),
+            ...$context,
+        ]);
+
+        return $this->failCheckout($this->customerCheckoutMessage($e, $ref));
+    }
+
+    private function checkoutSuccess(string $url, ?string $forgetSessionKey = null): RedirectResponse|JsonResponse
+    {
+        if ($forgetSessionKey !== null) {
+            request()->session()->forget($forgetSessionKey);
+        }
+
+        if ($this->wantsJsonCheckout()) {
+            return response()->json([
+                'ok' => true,
+                'redirect_url' => $url,
+            ]);
+        }
+
+        return str_starts_with($url, 'http://') || str_starts_with($url, 'https://')
+            ? redirect()->away($url)
+            : redirect()->to($url);
+    }
+
+    private function validCheckoutUrl(string $url): bool
+    {
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+
+        $parts = parse_url($url);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        if ($host === '' || ! in_array($scheme, ['http', 'https'], true)) {
+            return false;
+        }
+
+        if ($host === 'nowpayments.io' || str_ends_with($host, '.nowpayments.io')) {
+            return $scheme === 'https';
+        }
+
+        $appHost = strtolower((string) parse_url(request()->getSchemeAndHttpHost(), PHP_URL_HOST));
+
+        return $appHost !== '' && $host === $appHost;
+    }
+
+    private function failCheckout(string $message, ?string $route = null): RedirectResponse|JsonResponse
+    {
+        if ($this->wantsJsonCheckout()) {
+            return response()->json([
+                'ok' => false,
+                'error' => $message,
+            ], 422);
+        }
+
+        if ($route !== null) {
+            return redirect()->route($route)->with('error', $message);
+        }
+
+        return back()->withInput()->with('error', $message);
+    }
+
+    private function wantsJsonCheckout(): bool
+    {
+        $request = request();
+
+        return $request->expectsJson() || $request->ajax();
+    }
+
+    private function customerCheckoutMessage(Throwable $e, string $ref): string
+    {
+        if ($e instanceof InvalidArgumentException) {
+            return $e->getMessage();
+        }
+
+        $root = $e->getPrevious() ?? $e;
+        if ($root instanceof ConnectionException) {
+            return 'Payment service is temporarily unreachable. Please try again in a few minutes. Support code: '.$ref.'.';
+        }
+
+        return 'We could not start payment. Please try again. If it continues, contact support with code '.$ref.'.';
     }
 }

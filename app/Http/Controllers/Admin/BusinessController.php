@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Business\BusinessVolumeService;
+use App\Support\AdminList;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -16,10 +17,12 @@ class BusinessController extends Controller
     public function allUsers(Request $request): View
     {
         $date = $request->string('date')->toString() ?: now()->toDateString();
+        $q = AdminList::search($request);
 
         return view('admin.business.all', [
             'date' => $date,
-            'rows' => $this->volumes->reportForDate($date),
+            'q' => $q,
+            'rows' => $this->volumes->paginateReportForDate($date, $q, AdminList::perPage($request)),
         ]);
     }
 
@@ -27,11 +30,13 @@ class BusinessController extends Controller
     {
         $from = $request->string('from')->toString() ?: now()->subDays(9)->toDateString();
         $to = $request->string('to')->toString() ?: now()->toDateString();
+        $q = AdminList::search($request);
 
         return view('admin.business.offer', [
             'from' => $from,
             'to' => $to,
-            'rows' => $this->volumes->reportForRange($from, $to),
+            'q' => $q,
+            'rows' => $this->volumes->paginateReportForRange($from, $to, $q, AdminList::perPage($request)),
         ]);
     }
 }

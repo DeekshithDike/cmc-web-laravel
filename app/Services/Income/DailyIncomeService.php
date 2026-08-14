@@ -26,7 +26,10 @@ class DailyIncomeService
 
     public function previousDate(?Carbon $now = null): string
     {
-        return ($now ?? now())->subDay()->toDateString();
+        $tz = (string) config('citymax.income.timezone', 'Asia/Kuala_Lumpur');
+        $now = $now ? $now->copy()->timezone($tz) : now($tz);
+
+        return $now->subDay()->toDateString();
     }
 
     /**
@@ -51,9 +54,9 @@ class DailyIncomeService
 
         $processed = 0;
         $totalPaid = '0.00';
-        $binaryPercent = (float) config('citymax.income.binary_percent', 5);
-        $binaryMax = (float) config('citymax.income.binary_max', 500);
-        $referralPercent = (float) config('citymax.income.referral_percent', 10);
+        $binaryPercent = (float) config('citymax.income.binary_percent');
+        $binaryMax = (float) config('citymax.income.binary_max');
+        $referralPercent = (float) config('citymax.income.referral_percent');
 
         User::query()
             ->where('role', UserRole::Customer)

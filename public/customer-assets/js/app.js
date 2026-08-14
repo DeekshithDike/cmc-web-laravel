@@ -2,8 +2,7 @@
   const themeKey = "cmc-theme";
   const sidebarKey = "cmc-sidebar";
   const saved = localStorage.getItem(themeKey);
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  if ((saved ? saved === "dark" : prefersDark)) document.documentElement.classList.add("dark");
+  if (saved !== "light") document.documentElement.classList.add("dark");
   if (localStorage.getItem(sidebarKey) !== "expanded") document.documentElement.classList.add("sidebar-collapsed");
 
   window.cmcToggleTheme = function () {

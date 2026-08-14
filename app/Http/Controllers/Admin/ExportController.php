@@ -7,16 +7,23 @@ use App\Enums\WithdrawalStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Withdrawal;
+use App\Support\AdminList;
 use App\Support\CsvExporter;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
 {
-    public function activeUsers(): StreamedResponse
+    public function activeUsers(Request $request): StreamedResponse
     {
+        $q = AdminList::search($request);
+        $packageId = (int) $request->query('package_id', 0);
+
         $query = User::query()
             ->where('role', UserRole::Customer)
             ->where('is_active', true)
+            ->when($packageId > 0, fn ($builder) => $builder->where('package_id', $packageId))
+            ->tap(fn ($builder) => AdminList::applySearch($builder, $q, ['name', 'email', 'phone']))
             ->with(['package:id,name'])
             ->orderBy('id')
             ->select([
@@ -38,11 +45,32 @@ class ExportController extends Controller
         ], $this->mapUsers($query));
     }
 
-    public function completedWithdrawals(): StreamedResponse
+    public function completedWithdrawals(Request $request): StreamedResponse
     {
+        $q = AdminList::search($request);
+
         $query = Withdrawal::query()
             ->with(['user:id,name'])
             ->where('status', WithdrawalStatus::Completed)
+            ->when($q !== '', function ($builder) use ($q) {
+                if (AdminList::isNumericId($q)) {
+                    $id = (int) $q;
+                    $builder->where(function ($inner) use ($id) {
+                        $inner->where('id', $id)->orWhere('user_id', $id);
+                    });
+
+                    return;
+                }
+
+                $like = AdminList::like($q);
+                $builder->where(function ($inner) use ($like) {
+                    $inner->where('wallet_address', 'like', $like)
+                        ->orWhereHas('user', function ($userQuery) use ($like) {
+                            $userQuery->where('name', 'like', $like)
+                                ->orWhere('email', 'like', $like);
+                        });
+                });
+            })
             ->orderBy('id')
             ->select([
                 'id',
@@ -56,7 +84,7 @@ class ExportController extends Controller
             ]);
 
         return CsvExporter::download('completed-withdrawals.csv', [
-            'ID', 'User ID', 'Name', 'Amount', 'Fee', 'Payable', 'Wallet', 'Remarks', 'Processed At',
+            'ID', 'Customer ID', 'Name', 'Amount', 'Fee', 'Payable', 'Wallet', 'Remarks', 'Processed At',
         ], $this->mapWithdrawals($query));
     }
 

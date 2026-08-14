@@ -30,7 +30,7 @@ class UserFactory extends Factory
             'payment_status' => true,
             'is_power_id' => false,
             'wallet_balance' => '0.00',
-            'expiry_date' => now()->addMonths(6)->toDateString(),
+            'expiry_date' => now()->addWeekdays((int) config('citymax.membership.weekdays'))->toDateString(),
         ];
     }
 

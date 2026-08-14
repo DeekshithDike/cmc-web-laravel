@@ -11,18 +11,14 @@ class EnsureCustomerMembershipActive
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = $request->user('customer');
 
         if (! $user) {
             return redirect()->route('customer.login');
         }
 
         if ($user->expiry_date && $user->expiry_date->copy()->endOfDay()->isPast()) {
-            Auth::logout();
-            if ($request->hasSession()) {
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-            }
+            Auth::guard('customer')->logout();
 
             return redirect()
                 ->route('customer.login')
@@ -30,11 +26,7 @@ class EnsureCustomerMembershipActive
         }
 
         if (! $user->is_active || ! $user->payment_status) {
-            Auth::logout();
-            if ($request->hasSession()) {
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-            }
+            Auth::guard('customer')->logout();
 
             return redirect()
                 ->route('customer.login')

@@ -244,7 +244,7 @@ class PaymentService
             $user->is_active = true;
             $user->status = UserStatus::Active;
             if (! $user->expiry_date) {
-                $user->expiry_date = now()->addWeekdays((int) config('citymax.membership.weekdays', 150))->toDateString();
+                $user->expiry_date = now()->addWeekdays((int) config('citymax.membership.weekdays'))->toDateString();
             }
             $user->save();
 

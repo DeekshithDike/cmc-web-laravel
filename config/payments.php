@@ -25,6 +25,8 @@ return [
         'base_url' => rtrim(env('NOWPAYMENTS_API_URL', 'https://api.nowpayments.io/v1'), '/'),
         'price_currency' => strtolower(env('NOWPAYMENTS_PRICE_CURRENCY', 'usd')),
         'payout_currency' => strtolower(env('NOWPAYMENTS_PAYOUT_CURRENCY', 'usdttrc20')),
+        'payout_currency_trc20' => strtolower(env('NOWPAYMENTS_PAYOUT_CURRENCY_TRC20', env('NOWPAYMENTS_PAYOUT_CURRENCY', 'usdttrc20'))),
+        'payout_currency_bep20' => strtolower(env('NOWPAYMENTS_PAYOUT_CURRENCY_BEP20', 'usdtbsc')),
         'payout_fiat_currency' => strtolower(env('NOWPAYMENTS_PAYOUT_FIAT_CURRENCY', env('NOWPAYMENTS_PRICE_CURRENCY', 'usd'))),
         'validate_payout_address' => (bool) env('NOWPAYMENTS_VALIDATE_ADDRESS', true),
         'http_timeout' => (int) env('NOWPAYMENTS_HTTP_TIMEOUT', 30),

@@ -19,7 +19,7 @@
 @else
     <div class="mt-6 space-y-3 rounded-xl bg-primary/5 border border-primary/20 p-4 text-sm">
         <div>
-            <p class="text-xs text-muted">Login ID</p>
+            <p class="text-xs text-muted">Customer ID</p>
             <p class="font-semibold text-heading text-lg">{{ $payload['login_id'] }}</p>
         </div>
         <div>

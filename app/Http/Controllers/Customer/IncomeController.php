@@ -12,7 +12,7 @@ class IncomeController extends Controller
     public function history(Request $request): View
     {
         $rows = PaymentDetail::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $request->user('customer')->id)
             ->latest('paid_on')
             ->paginate(25);
 

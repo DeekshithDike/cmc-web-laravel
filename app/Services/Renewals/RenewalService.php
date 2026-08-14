@@ -17,8 +17,8 @@ class RenewalService
             throw new InvalidArgumentException('Only customers can be renewed.');
         }
 
-        $warningDays = (int) config('citymax.membership.expiry_warning_days', 10);
-        $weekdays = (int) config('citymax.membership.weekdays', 150);
+        $warningDays = (int) config('citymax.membership.expiry_warning_days');
+        $weekdays = (int) config('citymax.membership.weekdays');
 
         if ($user->expiry_date && $user->expiry_date->gt(now()->addDays($warningDays))) {
             throw new InvalidArgumentException("Renewal allowed only within {$warningDays} days of expiry.");

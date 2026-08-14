@@ -16,7 +16,7 @@ class WithdrawalController extends Controller
     public function create(Request $request): View
     {
         return view('customer.withdrawals.create', [
-            'user' => $request->user(),
+            'user' => $request->user('customer'),
             'minimum' => config('citymax.withdrawal.minimum'),
             'fee' => config('citymax.withdrawal.fee'),
         ]);
@@ -30,7 +30,7 @@ class WithdrawalController extends Controller
         ]);
 
         try {
-            $service->request($request->user(), (float) $data['amount'], $data['wallet_address']);
+            $service->request($request->user('customer'), (float) $data['amount'], $data['wallet_address']);
         } catch (InvalidArgumentException|Throwable $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
@@ -41,7 +41,7 @@ class WithdrawalController extends Controller
     public function history(Request $request): View
     {
         $withdrawals = Withdrawal::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $request->user('customer')->id)
             ->latest()
             ->paginate(25);
 

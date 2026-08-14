@@ -8,6 +8,7 @@ use App\Enums\WithdrawalStatus;
 use App\Models\Withdrawal;
 use App\Services\Payments\NowPayments\NowPaymentsClient;
 use App\Services\Payments\PaymentEnvironment;
+use App\Support\UsdtWalletAddress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -31,7 +32,12 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
 
     public function send(Withdrawal $withdrawal, array $meta = []): array
     {
-        $currency = strtolower((string) ($meta['currency'] ?? config('payments.nowpayments.payout_currency')));
+        $currency = strtolower((string) (
+            $meta['currency']
+            ?? UsdtWalletAddress::nowPaymentsCurrency((string) $withdrawal->wallet_address)
+            ?? ($withdrawal->meta['payout_currency'] ?? null)
+            ?? config('payments.nowpayments.payout_currency')
+        ));
         $amount = (float) $withdrawal->payable_amount;
         $fiatCurrency = strtolower((string) config('payments.nowpayments.payout_fiat_currency'));
 

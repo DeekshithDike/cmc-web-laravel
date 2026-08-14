@@ -78,7 +78,7 @@
 
         return '<a href="'.e($url).'" class="cmc-tree-node">'
             .'<i class="fa fa-user tree-user-icon '.e($icon).'"></i>'
-            .'<p class="text-heading">ID '.e((string) $node->users_id).$amount.'</p>'
+            .'<p class="text-heading">Customer ID '.e((string) $node->users_id).$amount.'</p>'
             .'</a>';
     };
 
@@ -96,11 +96,11 @@
     <div class="text-center mb-4">
         @if ($isOwnTree)
             <span class="cmc-chip mb-2"><i class="ph ph-tree-structure"></i> Your network</span>
-            <h3 class="text-lg font-semibold text-success mt-0 mb-1">Your ID: {{ $parentId }}</h3>
+            <h3 class="text-lg font-semibold text-success mt-0 mb-1">Customer ID: {{ $parentId }}</h3>
             <p class="text-sm text-muted">{{ $parentName }}</p>
         @else
             <span class="cmc-chip mb-2"><i class="ph ph-users-three"></i> Team view</span>
-            <h3 class="text-lg font-semibold text-heading mt-0 mb-1">ID: {{ $parentId }}</h3>
+            <h3 class="text-lg font-semibold text-heading mt-0 mb-1">Customer ID: {{ $parentId }}</h3>
             <p class="text-sm text-muted">{{ $parentName }}</p>
         @endif
     </div>
@@ -118,7 +118,7 @@
                     <div class="cmc-tree-node">
                         <i class="fa fa-user tree-user-icon {{ $nodeIconClass(null, $parentAmount) }}"></i>
                         <p class="text-heading">
-                            ID {{ $parentId }}
+                            Customer ID {{ $parentId }}
                             @if ($parentAmount)
                                 <br>$ {{ number_format((float) $parentAmount) }}
                             @endif

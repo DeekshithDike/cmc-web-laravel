@@ -5,8 +5,13 @@
     <div class="ibox-title"><h5>Manage Renewals — Active Users</h5></div>
     <div class="ibox-content">
         <p class="text-muted">Renew Now is available within {{ $warningDays }} days of expiry.</p>
+        <form method="GET" class="form-inline m-b-md">
+            <input type="text" name="q" value="{{ $q }}" class="form-control" placeholder="Search Customer ID / name / email / phone">
+            <button class="btn btn-primary m-l-sm">Search</button>
+            <a href="{{ route('admin.renewals.active') }}" class="btn btn-default m-l-sm">Reset</a>
+        </form>
         <table class="table table-striped">
-            <thead><tr><th>ID</th><th>Name</th><th>Package</th><th>Expiry</th><th></th></tr></thead>
+            <thead><tr><th>Customer ID</th><th>Name</th><th>Package</th><th>Expiry</th><th></th></tr></thead>
             <tbody>
             @forelse($users as $user)
                 @php $days = $user->expiry_date ? now()->startOfDay()->diffInDays($user->expiry_date, false) : null; @endphp
@@ -28,7 +33,7 @@
             @endforelse
             </tbody>
         </table>
-        {{ $users->links() }}
+        @include('admin.partials.pagination', ['paginator' => $users])
     </div>
 </div>
 @endsection

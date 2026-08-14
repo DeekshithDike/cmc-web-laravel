@@ -7,7 +7,8 @@ use App\Enums\UserRole;
 use App\Models\BinaryTreeLeft;
 use App\Models\BinaryTreeRight;
 use App\Models\User;
-use Illuminate\Support\Collection;
+use App\Support\AdminList;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class BusinessVolumeService
@@ -53,45 +54,37 @@ class BusinessVolumeService
     }
 
     /**
-     * @return Collection<int, array{user_id:int,name:string,left:string,right:string}>
+     * @return LengthAwarePaginator<int, array{user_id:int,name:string,left:string,right:string}>
      */
-    public function reportForDate(string $date): Collection
+    public function paginateReportForDate(string $date, string $q = '', int $perPage = AdminList::PER_PAGE): LengthAwarePaginator
     {
-        $left = BinaryTreeLeft::query()
-            ->select('user_id', DB::raw('SUM(amount) as total'))
-            ->whereDate('business_date', $date)
-            ->groupBy('user_id')
-            ->pluck('total', 'user_id');
-
-        $right = BinaryTreeRight::query()
-            ->select('user_id', DB::raw('SUM(amount) as total'))
-            ->whereDate('business_date', $date)
-            ->groupBy('user_id')
-            ->pluck('total', 'user_id');
-
-        return $this->mergeTotals($left, $right, true);
+        return $this->paginateMergedVolumes(
+            leftBuilder: fn ($query) => $query->whereDate('business_date', $date),
+            rightBuilder: fn ($query) => $query->whereDate('business_date', $date),
+            q: $q,
+            perPage: $perPage,
+            customersOnly: true,
+        );
     }
 
     /**
-     * @return Collection<int, array{user_id:int,name:string,left:string,right:string}>
+     * @return LengthAwarePaginator<int, array{user_id:int,name:string,left:string,right:string}>
      */
-    public function reportForRange(string $from, string $to): Collection
+    public function paginateReportForRange(string $from, string $to, string $q = '', int $perPage = AdminList::PER_PAGE): LengthAwarePaginator
     {
-        $left = BinaryTreeLeft::query()
-            ->select('user_id', DB::raw('SUM(amount) as total'))
-            ->whereDate('business_date', '>=', $from)
-            ->whereDate('business_date', '<=', $to)
-            ->groupBy('user_id')
-            ->pluck('total', 'user_id');
-
-        $right = BinaryTreeRight::query()
-            ->select('user_id', DB::raw('SUM(amount) as total'))
-            ->whereDate('business_date', '>=', $from)
-            ->whereDate('business_date', '<=', $to)
-            ->groupBy('user_id')
-            ->pluck('total', 'user_id');
-
-        return $this->mergeTotals($left, $right, false);
+        return $this->paginateMergedVolumes(
+            leftBuilder: function ($query) use ($from, $to) {
+                $query->whereDate('business_date', '>=', $from)
+                    ->whereDate('business_date', '<=', $to);
+            },
+            rightBuilder: function ($query) use ($from, $to) {
+                $query->whereDate('business_date', '>=', $from)
+                    ->whereDate('business_date', '<=', $to);
+            },
+            q: $q,
+            perPage: $perPage,
+            customersOnly: false,
+        );
     }
 
     /**
@@ -153,30 +146,71 @@ class BusinessVolumeService
     }
 
     /**
-     * @param  Collection<int|string, mixed>  $left
-     * @param  Collection<int|string, mixed>  $right
-     * @return Collection<int, array{user_id:int,name:string,left:string,right:string}>
+     * @param  callable(\Illuminate\Database\Query\Builder):void  $leftBuilder
+     * @param  callable(\Illuminate\Database\Query\Builder):void  $rightBuilder
+     * @return LengthAwarePaginator<int, array{user_id:int,name:string,left:string,right:string}>
      */
-    private function mergeTotals(Collection $left, Collection $right, bool $customersOnly): Collection
+    private function paginateMergedVolumes(callable $leftBuilder, callable $rightBuilder, string $q, int $perPage, bool $customersOnly): LengthAwarePaginator
     {
-        $userIds = $left->keys()->merge($right->keys())->unique()->values();
-        if ($userIds->isEmpty()) {
-            return collect();
-        }
+        $leftQuery = DB::table('binary_tree_lefts')
+            ->select('user_id', DB::raw('SUM(amount) as left_total'), DB::raw('0 as right_total'))
+            ->groupBy('user_id');
+        $leftBuilder($leftQuery);
 
-        $namesQuery = User::query()->whereIn('id', $userIds)->select(['id', 'name']);
+        $rightQuery = DB::table('binary_tree_rights')
+            ->select('user_id', DB::raw('0 as left_total'), DB::raw('SUM(amount) as right_total'))
+            ->groupBy('user_id');
+        $rightBuilder($rightQuery);
+
+        $union = $leftQuery->unionAll($rightQuery);
+
+        $aggregated = DB::query()
+            ->fromSub($union, 'side_volumes')
+            ->select(
+                'user_id',
+                DB::raw('SUM(left_total) as left_total'),
+                DB::raw('SUM(right_total) as right_total')
+            )
+            ->groupBy('user_id');
+
+        $query = DB::query()
+            ->fromSub($aggregated, 'volumes')
+            ->join('users', 'users.id', '=', 'volumes.user_id')
+            ->select(
+                'volumes.user_id',
+                'users.name',
+                'volumes.left_total',
+                'volumes.right_total'
+            )
+            ->orderByRaw('(volumes.left_total + volumes.right_total) DESC')
+            ->orderBy('volumes.user_id');
+
         if ($customersOnly) {
-            $namesQuery->where('role', UserRole::Customer);
+            $query->where('users.role', UserRole::Customer->value);
         }
-        $names = $namesQuery->pluck('name', 'id');
 
-        return $userIds->map(function ($id) use ($left, $right, $names) {
-            return [
-                'user_id' => (int) $id,
-                'name' => (string) ($names[$id] ?? ''),
-                'left' => number_format((float) ($left[$id] ?? 0), 2, '.', ''),
-                'right' => number_format((float) ($right[$id] ?? 0), 2, '.', ''),
-            ];
-        })->sortByDesc(fn ($r) => (float) $r['left'] + (float) $r['right'])->values();
+        if ($q !== '') {
+            if (AdminList::isNumericId($q)) {
+                $query->where('volumes.user_id', (int) $q);
+            } else {
+                $like = AdminList::like($q);
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('users.name', 'like', $like)
+                        ->orWhere('users.email', 'like', $like);
+                });
+            }
+        }
+
+        return $query
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($row) {
+                return [
+                    'user_id' => (int) $row->user_id,
+                    'name' => (string) $row->name,
+                    'left' => number_format((float) $row->left_total, 2, '.', ''),
+                    'right' => number_format((float) $row->right_total, 2, '.', ''),
+                ];
+            });
     }
 }

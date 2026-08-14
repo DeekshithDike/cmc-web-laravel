@@ -199,7 +199,7 @@ class BinaryTreePlacementAndIncomeTest extends TestCase
         $this->actingAs($this->root)
             ->get(route('customer.tree'))
             ->assertOk()
-            ->assertSee('Your ID: '.$this->root->id, false)
+            ->assertSee('Customer ID: '.$this->root->id, false)
             ->assertSee('fa-user', false)
             ->assertSee('Add user', false)
             ->assertSee('placementID%3D'.$this->root->id, false)
@@ -212,7 +212,7 @@ class BinaryTreePlacementAndIncomeTest extends TestCase
         $this->get(route('customer.register', [
             'placementID' => $this->root->id,
             'position' => 'right',
-        ]))->assertOk()->assertSee('Sponsor <strong>#'.$this->root->id.'</strong>', false);
+        ]))->assertOk()->assertSee('Sponsor ID <strong>#'.$this->root->id.'</strong>', false);
     }
 
     public function test_power_id_guest_pay_activates_existing_id_and_emails_credentials(): void

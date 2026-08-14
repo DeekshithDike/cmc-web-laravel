@@ -7,6 +7,8 @@ use App\Enums\PaymentProvider;
 use App\Models\PaymentTransaction;
 use App\Models\User;
 use App\Services\Payments\NowPayments\NowPaymentsClient;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -78,7 +80,11 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
 
             $response = $this->client->createInvoice($payload);
             $invoiceId = (string) ($response['id'] ?? $response['invoice_id'] ?? $orderId);
-            $invoiceUrl = $response['invoice_url'] ?? null;
+            $invoiceUrl = $response['invoice_url'] ?? $response['invoice_link'] ?? null;
+
+            if (! is_string($invoiceUrl) || $invoiceUrl === '') {
+                throw new RuntimeException('NOWPayments did not return a checkout URL.');
+            }
 
             $transaction->provider_ref = $invoiceId;
             $transaction->meta = array_merge($transaction->meta ?? [], [
@@ -87,15 +93,25 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
             ]);
             $transaction->save();
 
+            Log::info('NOWPayments invoice created', [
+                'order' => $orderId,
+                'invoice_id' => $invoiceId,
+                'amount' => $amount,
+            ]);
+
             return [
                 'transaction' => $transaction->fresh(),
                 'redirect_url' => $invoiceUrl,
                 'message' => 'NOWPayments invoice created.',
             ];
         } catch (Throwable $e) {
-            Log::error('NOWPayments invoice failed', ['error' => $e->getMessage(), 'order' => $orderId]);
+            Log::error('NOWPayments invoice failed', $this->invoiceFailureContext($e, $orderId, $payload ?? []));
             $transaction->status = 'failed';
-            $transaction->meta = array_merge($transaction->meta ?? [], ['error' => $e->getMessage()]);
+            $transaction->meta = array_merge($transaction->meta ?? [], [
+                'error' => $e->getMessage(),
+                'http_status' => $e instanceof RequestException ? $e->response?->status() : null,
+                'http_body' => $e instanceof RequestException ? $e->response?->body() : null,
+            ]);
             $transaction->save();
 
             throw new RuntimeException('Unable to start NOWPayments checkout: '.$e->getMessage(), 0, $e);
@@ -167,5 +183,32 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
             'partially_paid', 'waiting', 'confirming', 'confirmed', 'sending' => 'pending',
             default => 'pending',
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function invoiceFailureContext(Throwable $e, string $orderId, array $payload): array
+    {
+        $context = [
+            'order' => $orderId,
+            'type' => $e::class,
+            'error' => $e->getMessage(),
+            'success_url' => $payload['success_url'] ?? null,
+            'cancel_url' => $payload['cancel_url'] ?? null,
+            'ipn_callback_url' => $payload['ipn_callback_url'] ?? null,
+        ];
+
+        if ($e instanceof RequestException && $e->response) {
+            $context['http_status'] = $e->response->status();
+            $context['http_body'] = $e->response->body();
+        }
+
+        if ($e instanceof ConnectionException) {
+            $context['hint'] = 'Could not reach NOWPayments. Check network and NOWPAYMENTS_API_URL.';
+        }
+
+        return $context;
     }
 }

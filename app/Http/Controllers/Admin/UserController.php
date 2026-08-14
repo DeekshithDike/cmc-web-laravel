@@ -8,6 +8,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Services\Auth\MemberCredentialsNotifier;
 use App\Services\Membership\MembershipService;
+use App\Support\AdminList;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,26 +19,25 @@ class UserController extends Controller
 {
     public function index(Request $request): View
     {
-        $q = trim((string) $request->query('q', ''));
+        $q = AdminList::search($request);
+        $packageId = (int) $request->query('package_id', 0);
 
         $users = User::query()
             ->where('role', UserRole::Customer)
             ->where('is_active', true)
-            ->when($q !== '', function ($query) use ($q) {
-                $like = '%'.addcslashes($q, '%_\\').'%';
-                $query->where(function ($inner) use ($q, $like) {
-                    $inner->where('id', $q)
-                        ->orWhere('name', 'like', $like)
-                        ->orWhere('email', 'like', $like)
-                        ->orWhere('phone', 'like', $like);
-                });
-            })
-            ->with('package')
-            ->latest()
-            ->paginate(25)
+            ->when($packageId > 0, fn ($query) => $query->where('package_id', $packageId))
+            ->tap(fn ($query) => AdminList::applySearch($query, $q, ['name', 'email', 'phone']))
+            ->with('package:id,name')
+            ->latest('id')
+            ->paginate(AdminList::perPage($request))
             ->withQueryString();
 
-        return view('admin.users.index', compact('users', 'q'));
+        return view('admin.users.index', [
+            'users' => $users,
+            'q' => $q,
+            'packageId' => $packageId,
+            'packages' => Package::query()->where('is_active', true)->orderBy('sort_order')->get(['id', 'name']),
+        ]);
     }
 
     public function create(): View

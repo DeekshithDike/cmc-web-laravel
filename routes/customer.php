@@ -8,7 +8,7 @@ use App\Http\Controllers\Customer\TreeController;
 use App\Http\Controllers\Customer\WithdrawalController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'customer', 'membership'])->prefix('customer')->name('customer.')->group(function () {
+Route::middleware(['auth:customer', 'customer', 'membership'])->prefix('customer')->name('customer.')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/tree', TreeController::class)->name('tree');
     Route::get('/tree/{id}', [TreeController::class, 'show'])->whereNumber('id')->name('tree.show');

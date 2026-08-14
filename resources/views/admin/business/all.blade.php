@@ -6,10 +6,12 @@
     <div class="ibox-content">
         <form method="GET" class="form-inline m-b-md">
             <input type="date" name="date" value="{{ $date }}" class="form-control">
-            <button class="btn btn-primary m-l-sm">Filter</button>
+            <input type="text" name="q" value="{{ $q }}" class="form-control m-l-sm" placeholder="Search Customer ID / name / email">
+            <button class="btn btn-primary m-l-sm">Search</button>
+            <a href="{{ route('admin.business.all') }}" class="btn btn-default m-l-sm">Reset</a>
         </form>
         <table class="table table-striped">
-            <thead><tr><th>User ID</th><th>Name</th><th>Left</th><th>Right</th><th>Total</th></tr></thead>
+            <thead><tr><th>Customer ID</th><th>Name</th><th>Left</th><th>Right</th><th>Total</th></tr></thead>
             <tbody>
             @forelse($rows as $row)
                 <tr>
@@ -24,6 +26,7 @@
             @endforelse
             </tbody>
         </table>
+        @include('admin.partials.pagination', ['paginator' => $rows])
     </div>
 </div>
 @endsection

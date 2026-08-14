@@ -14,7 +14,7 @@ class CustomerLoginController extends Controller
 
     public function show(): View|RedirectResponse
     {
-        if (auth()->check() && auth()->user()?->isCustomer()) {
+        if (auth('customer')->check()) {
             return redirect()->route('customer.dashboard');
         }
 
@@ -39,7 +39,7 @@ class CustomerLoginController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
-        $this->loginService->logout();
+        $this->loginService->logoutCustomer();
 
         return redirect()->route('customer.login');
     }

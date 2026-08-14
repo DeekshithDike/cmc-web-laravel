@@ -11,7 +11,7 @@ class EnsureUserIsCustomer
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = $request->user('customer');
 
         if (! $user || $user->role !== UserRole::Customer) {
             abort(403, 'Customer access required.');

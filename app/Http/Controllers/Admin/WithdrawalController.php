@@ -6,6 +6,7 @@ use App\Enums\WithdrawalStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Withdrawal;
 use App\Services\Withdrawals\WithdrawalService;
+use App\Support\AdminList;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,16 +18,39 @@ class WithdrawalController extends Controller
     public function index(Request $request, string $status = 'pending'): View
     {
         $statusEnum = WithdrawalStatus::tryFrom($status) ?? WithdrawalStatus::Pending;
+        $q = AdminList::search($request);
 
         $withdrawals = Withdrawal::query()
-            ->with('user')
+            ->with('user:id,name,email')
             ->where('status', $statusEnum)
-            ->latest()
-            ->paginate(25);
+            ->when($q !== '', function ($query) use ($q) {
+                if (AdminList::isNumericId($q)) {
+                    $id = (int) $q;
+                    $query->where(function ($inner) use ($id) {
+                        $inner->where('id', $id)->orWhere('user_id', $id);
+                    });
+
+                    return;
+                }
+
+                $like = AdminList::like($q);
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('wallet_address', 'like', $like)
+                        ->orWhere('payout_ref', 'like', $like)
+                        ->orWhereHas('user', function ($userQuery) use ($like) {
+                            $userQuery->where('name', 'like', $like)
+                                ->orWhere('email', 'like', $like);
+                        });
+                });
+            })
+            ->latest('id')
+            ->paginate(AdminList::perPage($request))
+            ->withQueryString();
 
         return view('admin.withdrawals.index', [
             'withdrawals' => $withdrawals,
             'status' => $statusEnum,
+            'q' => $q,
         ]);
     }
 

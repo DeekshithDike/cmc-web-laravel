@@ -32,7 +32,8 @@ class CustomerLoginTest extends TestCase
         ]);
 
         $response->assertRedirect(route('customer.dashboard'));
-        $this->assertAuthenticatedAs($customer);
+        $this->assertAuthenticatedAs($customer, 'customer');
+        $this->assertGuest('admin');
     }
 
     public function test_expired_customer_cannot_login(): void
@@ -49,7 +50,7 @@ class CustomerLoginTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('login_id');
-        $this->assertGuest();
+        $this->assertGuest('customer');
     }
 
     public function test_inactive_customer_cannot_login(): void
@@ -67,6 +68,6 @@ class CustomerLoginTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('login_id');
-        $this->assertGuest();
+        $this->assertGuest('customer');
     }
 }

@@ -25,10 +25,20 @@ class SecureHeaders
         }
 
         if (! $response->headers->has('Content-Security-Policy')) {
-            $response->headers->set(
-                'Content-Security-Policy',
-                "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
-            );
+            // form-action also applies to the Location redirect after POST.
+            // Login stays on-site; register redirects to NOWPayments checkout.
+            $formAction = "'self' https://nowpayments.io https://*.nowpayments.io";
+            if (app()->environment('local')) {
+                $port = $request->getPort();
+                $formAction .= " http://127.0.0.1:{$port} http://localhost:{$port}";
+            }
+
+            $policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action {$formAction}; object-src 'none'";
+            if ($request->secure()) {
+                $policy .= '; upgrade-insecure-requests';
+            }
+
+            $response->headers->set('Content-Security-Policy', $policy);
         }
 
         return $response;

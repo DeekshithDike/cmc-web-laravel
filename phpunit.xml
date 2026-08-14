@@ -41,6 +41,10 @@
         <env name="NOWPAYMENTS_IPN_SECRET" value=""/>
         <env name="SEED_ADMIN_PASSWORD" value="testing-admin-pass"/>
         <env name="SEED_CUSTOMER_PASSWORD" value="testing-customer-pass"/>
+        <env name="WITHDRAWAL_MINIMUM" value="10"/>
+        <env name="WITHDRAWAL_FEE" value="2"/>
+        <env name="MEMBERSHIP_WEEKDAYS" value="200"/>
+        <env name="MEMBERSHIP_EXPIRY_WARNING_DAYS" value="10"/>
         <env name="INCOME_REFERRAL_PERCENT" value="10"/>
         <env name="INCOME_BINARY_PERCENT" value="5"/>
         <env name="INCOME_BINARY_MAX" value="500"/>

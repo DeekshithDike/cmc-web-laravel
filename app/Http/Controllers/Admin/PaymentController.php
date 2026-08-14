@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentTransaction;
 use App\Models\User;
 use App\Services\Payments\PaymentService;
+use App\Support\AdminList;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -13,11 +14,39 @@ use Throwable;
 
 class PaymentController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $transactions = PaymentTransaction::query()->with(['user', 'package'])->latest()->paginate(25);
+        $q = AdminList::search($request);
+        $status = trim((string) $request->query('status', ''));
 
-        return view('admin.payments.index', compact('transactions'));
+        $transactions = PaymentTransaction::query()
+            ->with(['user:id,name,email', 'package:id,name'])
+            ->when($status !== '', fn ($query) => $query->where('status', $status))
+            ->when($q !== '', function ($query) use ($q) {
+                if (AdminList::isNumericId($q)) {
+                    $id = (int) $q;
+                    $query->where(function ($inner) use ($id) {
+                        $inner->where('id', $id)->orWhere('user_id', $id);
+                    });
+
+                    return;
+                }
+
+                $like = AdminList::like($q);
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('provider_ref', 'like', $like)
+                        ->orWhere('provider', 'like', $like)
+                        ->orWhereHas('user', function ($userQuery) use ($like) {
+                            $userQuery->where('name', 'like', $like)
+                                ->orWhere('email', 'like', $like);
+                        });
+                });
+            })
+            ->latest('id')
+            ->paginate(AdminList::perPage($request))
+            ->withQueryString();
+
+        return view('admin.payments.index', compact('transactions', 'q', 'status'));
     }
 
     public function start(Request $request, PaymentService $payments): RedirectResponse
@@ -52,7 +81,7 @@ class PaymentController extends Controller
         $model = PaymentTransaction::query()->findOrFail($payment);
 
         try {
-            $payments->confirm($model, ['confirmed_by' => $request->user()->id]);
+            $payments->confirm($model, ['confirmed_by' => $request->user('admin')->id]);
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
         }

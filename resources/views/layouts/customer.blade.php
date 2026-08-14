@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex,nofollow">
     <title>@yield('title', 'Member') — {{ config('citymax.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('branding/favicon-32.png') }}">
     <script>
       (function () {
         const saved = localStorage.getItem("cmc-theme");
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if ((saved ? saved === "dark" : prefersDark)) document.documentElement.classList.add("dark");
+        if (saved !== "light") document.documentElement.classList.add("dark");
         if (localStorage.getItem("cmc-sidebar") !== "expanded") document.documentElement.classList.add("sidebar-collapsed");
       })();
     </script>
@@ -78,10 +78,10 @@
     </nav>
     <div class="border-t border-border-subtle">
         <div class="cmc-side-user flex items-center gap-3">
-            <div class="cmc-avatar w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+            <div class="cmc-avatar w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0">{{ strtoupper(substr(auth('customer')->user()->name, 0, 1)) }}</div>
             <div class="nav-text min-w-0 flex-1 leading-tight">
-                <p class="text-sm font-semibold text-white truncate">{{ auth()->user()->name }}</p>
-                <p class="text-[11px] truncate" style="color: color-mix(in srgb, #9ec9ef 80%, transparent)">ID {{ auth()->id() }}</p>
+                <p class="text-sm font-semibold text-white truncate">{{ auth('customer')->user()->name }}</p>
+                <p class="text-[11px] truncate" style="color: color-mix(in srgb, #9ec9ef 80%, transparent)">ID {{ auth('customer')->id() }}</p>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@
     </div>
 </main>
 
-<script src="{{ asset('customer-assets/js/app.js') }}"></script>
+<script src="{{ asset_ver('customer-assets/js/app.js') }}"></script>
 @stack('scripts')
 </body>
 </html>

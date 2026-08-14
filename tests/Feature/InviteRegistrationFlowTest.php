@@ -80,12 +80,277 @@ class InviteRegistrationFlowTest extends TestCase
         $this->get(route('customer.payment.success'))
             ->assertOk()
             ->assertSee('Registration successful', false)
-            ->assertSee('Login ID and Password will be sent to your registered email address after activation', false);
+            ->assertSee('Customer ID and Password will be sent to your registered email address after activation', false);
 
         $this->get(route('customer.payment.cancel'))
             ->assertOk()
             ->assertSee('Payment cancelled', false)
             ->assertSee('Signup again using the link', false);
+    }
+
+    public function test_register_form_posts_to_same_origin_path(): void
+    {
+        $html = $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<form[^>]*action="\/customer\/register"/',
+            $html
+        );
+        $this->assertStringContainsString('id="register-form"', $html);
+        $this->assertMatchesRegularExpression(
+            '/customer-assets\/js\/register\.js\?v=\d+/',
+            $html
+        );
+        $this->assertStringNotContainsString('action=""', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<form[^>]*action="[^"]*\?/',
+            $html
+        );
+    }
+
+    public function test_register_json_submit_returns_checkout_url(): void
+    {
+        config([
+            'payments.default_receive' => 'nowpayments',
+            'payments.nowpayments.api_key' => 'test-key',
+            'payments.nowpayments.ipn_secret' => 'ipn-secret',
+            'payments.allow_stub' => false,
+        ]);
+        Http::fake([
+            '*/invoice' => Http::response([
+                'id' => 'json-inv-1',
+                'invoice_url' => 'https://nowpayments.io/payment/?iid=json-inv-1',
+            ], 201),
+        ]);
+
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk();
+
+        $this->postJson(route('customer.register.save'), [
+            'name' => 'Invitee Json',
+            'email' => 'invitee-json@test.com',
+            'phone' => '111',
+            'country' => 'US',
+            'sponsor_id' => $this->root->id,
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+        ])->assertOk()->assertJson([
+            'ok' => true,
+            'redirect_url' => 'https://nowpayments.io/payment/?iid=json-inv-1',
+        ]);
+
+        $this->assertNull(User::query()->where('email', 'invitee-json@test.com')->first());
+    }
+
+    public function test_register_json_validation_returns_error_without_internals(): void
+    {
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk();
+
+        $response = $this->postJson(route('customer.register.save'), [
+            'name' => '',
+            'email' => 'not-an-email',
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonPath('ok', false)
+            ->assertJsonStructure(['ok', 'error', 'errors']);
+        $this->assertNotSame('', (string) $response->json('error'));
+        $this->assertIsArray($response->json('errors'));
+        $this->assertArrayNotHasKey('exception', $response->json());
+        $this->assertArrayNotHasKey('trace', $response->json());
+        $this->assertArrayNotHasKey('file', $response->json());
+    }
+
+    public function test_register_json_rejects_invalid_checkout_url(): void
+    {
+        config([
+            'payments.default_receive' => 'nowpayments',
+            'payments.nowpayments.api_key' => 'test-key',
+            'payments.nowpayments.ipn_secret' => 'ipn-secret',
+            'payments.allow_stub' => false,
+        ]);
+        Http::fake([
+            '*/invoice' => Http::response([
+                'id' => 'bad-url',
+                'invoice_url' => 'https://evil.example/pay',
+            ], 201),
+        ]);
+
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk();
+
+        $response = $this->postJson(route('customer.register.save'), [
+            'name' => 'Invitee Bad Url',
+            'email' => 'invitee-bad-url@test.com',
+            'phone' => '111',
+            'country' => 'US',
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonPath('ok', false)
+            ->assertJsonMissing(['redirect_url' => 'https://evil.example/pay']);
+        $error = strtolower((string) $response->json('error'));
+        $this->assertStringContainsString('could not start payment', $error);
+        $this->assertStringContainsString('reg-', $error);
+        $this->assertStringNotContainsString('evil.example', $error);
+        $this->assertArrayNotHasKey('exception', $response->json());
+    }
+
+    public function test_nowpayments_invoice_failure_shows_customer_error_and_logs(): void
+    {
+        config([
+            'payments.default_receive' => 'nowpayments',
+            'payments.nowpayments.api_key' => 'test-key',
+            'payments.allow_stub' => false,
+        ]);
+        Http::fake([
+            '*/invoice' => Http::response(['message' => 'server error'], 500),
+        ]);
+
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk();
+
+        $this->from(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->post(route('customer.register.save'), [
+            'name' => 'Invitee',
+            'email' => 'pay-fail@test.com',
+            'phone' => '111',
+            'country' => 'US',
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $error = strtolower((string) session('error'));
+        $this->assertStringContainsString('could not start payment', $error);
+        $this->assertStringContainsString('reg-', $error);
+        $this->assertStringNotContainsString('http request returned status code', $error);
+        $this->assertStringNotContainsString('server error', $error);
+    }
+
+    public function test_nowpayments_invoice_failure_returns_json_error(): void
+    {
+        config([
+            'payments.default_receive' => 'nowpayments',
+            'payments.nowpayments.api_key' => 'test-key',
+            'payments.allow_stub' => false,
+        ]);
+        Http::fake([
+            '*/invoice' => Http::response(['message' => 'server error'], 500),
+        ]);
+
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk();
+
+        $response = $this->postJson(route('customer.register.save'), [
+            'name' => 'Invitee',
+            'email' => 'pay-fail-json@test.com',
+            'phone' => '111',
+            'country' => 'US',
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+        ]);
+
+        $response->assertUnprocessable()->assertJsonPath('ok', false);
+        $error = strtolower((string) $response->json('error'));
+        $this->assertStringContainsString('could not start payment', $error);
+        $this->assertStringContainsString('reg-', $error);
+        $this->assertStringNotContainsString('server error', $error);
+        $this->assertStringNotContainsString('http request returned status code', $error);
+        $this->assertArrayNotHasKey('exception', $response->json());
+        $this->assertArrayNotHasKey('trace', $response->json());
+    }
+
+    public function test_taken_placement_shows_customer_error(): void
+    {
+        $child = User::query()->create([
+            'name' => 'Taken',
+            'email' => 'taken-slot@test.com',
+            'password' => 'Customer@123',
+            'role' => UserRole::Customer,
+            'status' => UserStatus::Active,
+            'is_active' => true,
+            'payment_status' => true,
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+            'expiry_date' => now()->addMonth()->toDateString(),
+        ]);
+        BinaryTree::query()->where('users_id', $this->root->id)->update(['right_user_id' => $child->id]);
+
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk();
+
+        $this->from(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->post(route('customer.register.save'), [
+            'name' => 'Invitee',
+            'email' => 'cannot-join@test.com',
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+        ])->assertRedirect()->assertSessionHas('error', 'Placement position is already taken.');
+    }
+
+    public function test_taken_placement_returns_json_error(): void
+    {
+        $child = User::query()->create([
+            'name' => 'Taken Json',
+            'email' => 'taken-slot-json@test.com',
+            'password' => 'Customer@123',
+            'role' => UserRole::Customer,
+            'status' => UserStatus::Active,
+            'is_active' => true,
+            'payment_status' => true,
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+            'expiry_date' => now()->addMonth()->toDateString(),
+        ]);
+        BinaryTree::query()->where('users_id', $this->root->id)->update(['right_user_id' => $child->id]);
+
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'right',
+        ]))->assertOk();
+
+        $this->postJson(route('customer.register.save'), [
+            'name' => 'Invitee',
+            'email' => 'cannot-join-json@test.com',
+            'parent_id' => $this->root->id,
+            'position' => 'right',
+            'package_id' => $this->package->id,
+        ])->assertUnprocessable()->assertJson([
+            'ok' => false,
+            'error' => 'Placement position is already taken.',
+        ]);
     }
 
     public function test_invite_submit_does_not_create_user_or_occupy_slot(): void

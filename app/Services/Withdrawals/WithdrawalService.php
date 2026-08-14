@@ -22,19 +22,22 @@ class WithdrawalService
 
     public function request(User $user, float $amount, string $walletAddress): Withdrawal
     {
-        $minimum = (float) config('citymax.withdrawal.minimum', 20);
-        $fee = (float) config('citymax.withdrawal.fee', 5);
+        $minimum = (float) config('citymax.withdrawal.minimum');
+        $fee = (float) config('citymax.withdrawal.fee');
 
         if ($amount < $minimum) {
             throw new InvalidArgumentException("Minimum withdrawal is \${$minimum}.");
         }
 
         $walletAddress = trim($walletAddress);
-        if (! UsdtWalletAddress::isEvm($walletAddress)) {
-            throw new InvalidArgumentException('Wallet address must be a USDT ERC-20 or BEP-20 address (0x followed by 40 hex characters).');
+        $network = UsdtWalletAddress::network($walletAddress);
+        if ($network === null) {
+            throw new InvalidArgumentException('Wallet address must be USDT TRC-20 (starts with T) or BEP-20 (0x followed by 40 hex characters).');
         }
 
-        return DB::transaction(function () use ($user, $amount, $walletAddress, $fee) {
+        $payoutCurrency = UsdtWalletAddress::nowPaymentsCurrency($walletAddress);
+
+        return DB::transaction(function () use ($user, $amount, $walletAddress, $fee, $network, $payoutCurrency) {
             $this->wallet->debit($user, $amount, 'withdrawal_request');
 
             return Withdrawal::query()->create([
@@ -44,6 +47,10 @@ class WithdrawalService
                 'payable_amount' => number_format(max($amount - $fee, 0), 2, '.', ''),
                 'wallet_address' => $walletAddress,
                 'status' => WithdrawalStatus::Pending,
+                'meta' => [
+                    'network' => $network,
+                    'payout_currency' => $payoutCurrency,
+                ],
             ]);
         });
     }

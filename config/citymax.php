@@ -3,6 +3,17 @@
 return [
     'name' => env('APP_NAME', 'City Max Crypto'),
     'tagline' => env('APP_TAGLINE', 'CREATE • CONNECT • CONQUER'),
+    'support_email' => env('SUPPORT_EMAIL', 'support@citymaxcrypto.com'),
+
+    'seo' => [
+        'html_lang' => 'en-MY',
+        'locale' => 'en_MY',
+        'country' => 'Malaysia',
+        'country_code' => 'MY',
+        'title' => env('SEO_TITLE', 'City Max Crypto | Daily ROI & USDT Packages in Malaysia'),
+        'description' => env('SEO_DESCRIPTION', 'City Max Crypto is a Malaysia crypto platform with USDT packages, 1% daily ROI, referral and binary income, and fast USDT withdrawals on TRC20 and BEP20.'),
+        'keywords' => env('SEO_KEYWORDS', 'City Max Crypto, CityMax, CityMax Crypto, City Max, citymax, citymax crypto Malaysia, crypto Malaysia, USDT Malaysia, Kuala Lumpur crypto, daily ROI, binary income, referral income, USDT TRC20, USDT BEP20'),
+    ],
 
     'calc' => [
         'base_url' => env('CALC_SERVICE_URL', 'http://127.0.0.1:3001'),
@@ -11,20 +22,25 @@ return [
     ],
 
     'withdrawal' => [
-        'minimum' => (float) env('WITHDRAWAL_MINIMUM', 20),
-        'fee' => (float) env('WITHDRAWAL_FEE', 5),
+        // Values come only from .env (WITHDRAWAL_MINIMUM, WITHDRAWAL_FEE).
+        'minimum' => (float) env('WITHDRAWAL_MINIMUM'),
+        'fee' => (float) env('WITHDRAWAL_FEE'),
     ],
 
     'membership' => [
-        'weekdays' => (int) env('MEMBERSHIP_WEEKDAYS', 150),
-        'expiry_warning_days' => (int) env('MEMBERSHIP_EXPIRY_WARNING_DAYS', 10),
+        // Package validity length — from .env only (MEMBERSHIP_WEEKDAYS). Not a packages-table column.
+        'weekdays' => (int) env('MEMBERSHIP_WEEKDAYS'),
+        'expiry_warning_days' => (int) env('MEMBERSHIP_EXPIRY_WARNING_DAYS'),
     ],
 
     'income' => [
-        'referral_percent' => (float) env('INCOME_REFERRAL_PERCENT', 10),
-        'binary_percent' => (float) env('INCOME_BINARY_PERCENT', 5),
-        'binary_max' => (float) env('INCOME_BINARY_MAX', 500),
-        'run_at' => env('INCOME_RUN_AT', '00:05'),
+        // Percents/caps come only from .env. ROI uses packages.roi_percent in the database.
+        'referral_percent' => (float) env('INCOME_REFERRAL_PERCENT'),
+        'binary_percent' => (float) env('INCOME_BINARY_PERCENT'),
+        'binary_max' => (float) env('INCOME_BINARY_MAX'),
+        // Malaysia midnight — pays the calendar day that just ended.
+        'run_at' => env('INCOME_RUN_AT', '00:00'),
+        'timezone' => env('INCOME_TIMEZONE', 'Asia/Kuala_Lumpur'),
     ],
 
     'seed' => [

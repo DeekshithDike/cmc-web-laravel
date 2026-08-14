@@ -18,11 +18,11 @@ class PasswordController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'current_password' => ['required', 'current_password'],
+            'current_password' => ['required', 'current_password:admin'],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
-        $user = $request->user();
+        $user = $request->user('admin');
         $user->password = $data['password'];
         $user->save();
 

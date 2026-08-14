@@ -19,8 +19,13 @@
 <div class="ibox">
     <div class="ibox-title"><h5>Unused Power IDs</h5></div>
     <div class="ibox-content">
+        <form method="GET" class="form-inline m-b-md">
+            <input type="text" name="q" value="{{ $q }}" class="form-control" placeholder="Search Power ID / Placement ID / Sponsor ID">
+            <button class="btn btn-primary m-l-sm">Search</button>
+            <a href="{{ route('admin.power.index') }}" class="btn btn-default m-l-sm">Reset</a>
+        </form>
         <table class="table table-striped">
-            <thead><tr><th>ID</th><th>Parent</th><th>Sponsor</th><th>Position</th><th>Guest pay link</th></tr></thead>
+            <thead><tr><th>Power ID</th><th>Placement ID</th><th>Sponsor ID</th><th>Position</th><th>Guest pay link</th></tr></thead>
             <tbody>
             @forelse($powerIds as $item)
                 <tr>
@@ -37,7 +42,7 @@
             @endforelse
             </tbody>
         </table>
-        {{ $powerIds->links() }}
+        @include('admin.partials.pagination', ['paginator' => $powerIds])
     </div>
 </div>
 @endsection

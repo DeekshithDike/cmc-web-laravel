@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex,nofollow">
     <title>@yield('title') — {{ config('citymax.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('branding/favicon-32.png') }}">
     <script>
       (function () {
         const saved = localStorage.getItem("cmc-theme");
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if ((saved ? saved === "dark" : prefersDark)) document.documentElement.classList.add("dark");
+        if (saved !== "light") document.documentElement.classList.add("dark");
       })();
     </script>
     <link href="{{ asset('customer-assets/css/index.css') }}" rel="stylesheet">
@@ -27,9 +27,6 @@
             <a class="flex justify-center mb-5" href="{{ route('landing') }}">
                 <img src="{{ asset('customer-assets/images/logo.png') }}" alt="{{ config('citymax.name') }}" class="h-10 object-contain">
             </a>
-            <div class="flex justify-center mb-4">
-                <span class="cmc-chip"><i class="ph ph-currency-circle-dollar"></i> USDT workspace</span>
-            </div>
             @yield('content')
         </div>
         <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted mt-5">
@@ -40,7 +37,7 @@
         <p class="text-center text-[11px] text-faint mt-4">© {{ date('Y') }} {{ config('citymax.name') }}</p>
     </div>
 </main>
-<script src="{{ asset('customer-assets/js/app.js') }}"></script>
+<script src="{{ asset_ver('customer-assets/js/app.js') }}"></script>
 @stack('scripts')
 </body>
 </html>

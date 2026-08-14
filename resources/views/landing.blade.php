@@ -1,20 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ config('citymax.seo.html_lang', 'en-MY') }}">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{ $brand }} — packages, daily ROI, referral & binary income, and fast USDT withdrawals.">
-    <meta name="robots" content="index,follow">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    <title>{{ $brand }} — {{ $tagline }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('branding/favicon-32.png') }}">
+    @include('partials.landing-seo')
     <link rel="stylesheet" href="{{ asset('landing/css/landing.css') }}?v={{ @filemtime(public_path('landing/css/landing.css')) ?: '1' }}">
 </head>
 <body>
+@if (session('error'))
+    <div style="background:#7f1d1d;color:#fecaca;padding:0.85rem 1.25rem;text-align:center;font-size:0.95rem;font-weight:600;">{{ session('error') }}</div>
+@endif
 <header class="site-header" id="siteHeader">
     <div class="container nav">
         <a class="brand" href="{{ route('landing') }}">
-            <img src="{{ asset('branding/icon-180.png') }}" alt="" width="40" height="40">
+            <img src="{{ asset('branding/icon-180.png') }}" alt="{{ $brand }}" width="40" height="40">
             <span>{{ $brand }}</span>
         </a>
         <nav class="nav-links" aria-label="Primary">
@@ -45,7 +42,7 @@
     <section class="hero" id="home">
         <div class="container hero-copy">
             <span class="eyebrow">{{ $brand }}</span>
-            <h1>Trade crypto with <span>clarity</span> and control</h1>
+            <h1>Trade crypto with <span>clarity</span> and control — {{ $brand }} Malaysia</h1>
             <p>A modern trading workspace for spot markets, portfolio tracking, and secure USDT settlements — built for focused decision-making.</p>
             <div class="btn-row hero-actions">
                 <a class="btn btn-primary" href="{{ route('customer.login') }}">Open dashboard</a>
@@ -96,22 +93,22 @@
                 <article class="card income-card">
                     <img src="{{ asset('landing/img/icon/crypto_icon02.svg') }}" alt="" width="64" height="64" loading="lazy" decoding="async">
                     <h3>Direct <span>referral</span></h3>
-                    <p class="income-stat">10% daily</p>
-                    <p>Earn 10% of referred package volume, paid with the daily income run.</p>
+                    <p class="income-stat">{{ rtrim(rtrim(number_format($referralPercent, 2), '0'), '.') }}% daily</p>
+                    <p>Earn {{ rtrim(rtrim(number_format($referralPercent, 2), '0'), '.') }}% of referred package volume, paid with the daily income run.</p>
                 </article>
                 <article class="card income-card">
                     <img src="{{ asset('landing/img/icon/crypto_icon03.svg') }}" alt="" width="64" height="64" loading="lazy" decoding="async">
                     <h3>Binary <span>income</span></h3>
-                    <p class="income-stat">5% matching</p>
-                    <p>Build left and right teams and earn 5% of the weaker-side binary volume.</p>
+                    <p class="income-stat">{{ rtrim(rtrim(number_format($binaryPercent, 2), '0'), '.') }}% matching</p>
+                    <p>Build left and right teams and earn {{ rtrim(rtrim(number_format($binaryPercent, 2), '0'), '.') }}% of the weaker-side binary volume.</p>
                 </article>
             </div>
             <div class="market-panel mt-panel">
                 <h3>Daily binary capping</h3>
-                <p class="lede mt-sm">Daily binary is capped at your package amount and $500, whichever is lower.</p>
+                <p class="lede mt-sm">Daily binary is capped at your package amount and ${{ number_format($binaryMax, 0) }}, whichever is lower.</p>
                 <ul class="market-list">
                     <li><span>$100 package</span><strong>Up to $100 / day</strong></li>
-                    <li><span>$2,000 package</span><strong>Up to $500 / day</strong></li>
+                    <li><span>$2,000 package</span><strong>Up to ${{ number_format($binaryMax, 0) }} / day</strong></li>
                 </ul>
             </div>
         </div>
@@ -150,7 +147,7 @@
                     </div>
                 </div>
                 <div class="pay-chips">
-                    <span class="pay-chip">USDT (ERC20)</span>
+                    <span class="pay-chip">USDT (TRC20)</span>
                     <span class="pay-chip">USDT (BEP20 / BSC)</span>
                 </div>
             </div>
@@ -189,7 +186,7 @@
                     <img src="{{ asset('landing/img/icon/features_icon04.png') }}" alt="" width="52" height="52" loading="lazy" decoding="async">
                     <div>
                         <h3>Secure <span>crypto rails</span></h3>
-                        <p>USDT settlements on ERC20 and BEP20 for transparent transfers.</p>
+                        <p>USDT settlements on TRC20 and BEP20 for transparent transfers.</p>
                     </div>
                 </article>
                 <article class="feature compact">
@@ -222,7 +219,7 @@
                     <article class="step">
                         <div class="num">02</div>
                         <h3>Activate with <span>USDT</span></h3>
-                        <p>Complete payment on ERC20 or BEP20 and activate your account.</p>
+                        <p>Complete payment on TRC20 or BEP20 and activate your account.</p>
                     </article>
                     <article class="step">
                         <div class="num">03</div>
@@ -252,11 +249,11 @@
                     </details>
                     <details>
                         <summary>What is the referral bonus?</summary>
-                        <p>When someone you invite activates a package, the full package amount is stored for you. Daily income pays 10% of that day's stored referral volume.</p>
+                        <p>When someone you invite activates a package, the full package amount is stored for you. Daily income pays {{ rtrim(rtrim(number_format($referralPercent, 2), '0'), '.') }}% of that day's stored referral volume.</p>
                     </details>
                     <details>
                         <summary>How is binary income capped?</summary>
-                        <p>Daily binary is 5% of matched (weaker-side) volume, then capped at your activated package amount and $500, whichever is lower.</p>
+                        <p>Daily binary is {{ rtrim(rtrim(number_format($binaryPercent, 2), '0'), '.') }}% of matched (weaker-side) volume, then capped at your activated package amount and ${{ number_format($binaryMax, 0) }}, whichever is lower.</p>
                     </details>
                     <details>
                         <summary>What are the withdrawal rules?</summary>
@@ -269,7 +266,7 @@
 
     <section class="cta">
         <div class="container">
-            <img class="brand-mark" src="{{ asset('branding/icon-180.png') }}" alt="" width="56" height="56" loading="lazy" decoding="async">
+            <img class="brand-mark" src="{{ asset('branding/icon-180.png') }}" alt="{{ $brand }}" width="56" height="56" loading="lazy" decoding="async">
             <div class="brand cta-brand">
                 <span>{{ $brand }}</span>
             </div>
@@ -285,10 +282,10 @@
 </main>
 
 <footer class="site-footer">
-    <div class="container">&copy; {{ date('Y') }} {{ $brand }}. All rights reserved.</div>
+    <div class="container">&copy; {{ date('Y') }} {{ $brand }}, Malaysia. All rights reserved.</div>
 </footer>
 
 <button class="scroll-top" id="scrollTop" type="button" aria-label="Scroll to top">↑</button>
-<script src="{{ asset('landing/js/landing.js') }}?v={{ @filemtime(public_path('landing/js/landing.js')) ?: '1' }}" defer></script>
+<script src="{{ asset_ver('landing/js/landing.js') }}" defer></script>
 </body>
 </html>

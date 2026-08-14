@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex,nofollow">
     <title>Admin Login — {{ config('citymax.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('branding/favicon-32.png') }}">
     <style>
@@ -40,7 +41,7 @@
     <h1>Admin Login</h1>
     <p class="tag">{{ config('citymax.tagline') }}</p>
     @include('partials.alerts')
-    <form method="POST" action="{{ route('admin.login.submit') }}">
+    <form method="POST" action="/admin/login">
         @csrf
         <label for="email">Email</label>
         <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username">

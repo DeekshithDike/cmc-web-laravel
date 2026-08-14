@@ -14,7 +14,7 @@ class AdminLoginController extends Controller
 
     public function show(): View|RedirectResponse
     {
-        if (auth()->check() && auth()->user()?->isAdmin()) {
+        if (auth('admin')->check()) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -39,7 +39,7 @@ class AdminLoginController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
-        $this->loginService->logout();
+        $this->loginService->logoutAdmin();
 
         return redirect()->route('admin.login');
     }

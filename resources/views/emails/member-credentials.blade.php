@@ -3,7 +3,7 @@
 
 Save these login details. They are also shown once on the credentials page after payment.
 
-**Login ID:** {{ $loginId }}
+**Customer ID:** {{ $loginId }}
 
 **Password:** {{ $password }}
 
