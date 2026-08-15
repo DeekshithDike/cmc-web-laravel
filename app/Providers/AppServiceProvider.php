@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        require_once app_path('Support/helpers.php');
+
         $this->app->singleton(CalcClientInterface::class, HttpCalcClient::class);
         $this->app->singleton(NowPaymentsClient::class);
         $this->app->singleton(PaymentGatewayManager::class);

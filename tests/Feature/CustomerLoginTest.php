@@ -14,7 +14,8 @@ class CustomerLoginTest extends TestCase
     {
         $this->get(route('customer.login'))
             ->assertOk()
-            ->assertSee('Customer Login', false);
+            ->assertSee('Customer Login', false)
+            ->assertSee('customer-assets/js/app.js?v=', false);
     }
 
     public function test_customer_can_login_with_id_and_password(): void
