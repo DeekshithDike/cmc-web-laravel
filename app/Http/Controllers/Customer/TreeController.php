@@ -6,17 +6,18 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\BinaryTree;
 use App\Models\User;
+use App\Services\Business\BusinessVolumeService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class TreeController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, BusinessVolumeService $volumes): View
     {
-        return $this->renderTree((int) $request->user('customer')->id, true);
+        return $this->renderTree((int) $request->user('customer')->id, true, $volumes);
     }
 
-    public function show(Request $request, int $id): View
+    public function show(Request $request, int $id, BusinessVolumeService $volumes): View
     {
         $viewerId = (int) $request->user('customer')->id;
         $target = User::query()
@@ -26,10 +27,10 @@ class TreeController extends Controller
 
         abort_unless($this->isOwnOrDownline($viewerId, (int) $target->id), 404);
 
-        return $this->renderTree((int) $target->id, $viewerId === (int) $target->id);
+        return $this->renderTree((int) $target->id, $viewerId === (int) $target->id, $volumes);
     }
 
-    private function renderTree(int $rootId, bool $isOwnTree): View
+    private function renderTree(int $rootId, bool $isOwnTree, BusinessVolumeService $volumes): View
     {
         $root = User::query()->with('package:id,amount')->findOrFail($rootId);
         $left1 = $this->childOf($rootId, 'left');
@@ -38,6 +39,7 @@ class TreeController extends Controller
         $right2 = $left1 ? $this->childOf((int) $left1->users_id, 'right') : null;
         $left3 = $right1 ? $this->childOf((int) $right1->users_id, 'left') : null;
         $right3 = $right1 ? $this->childOf((int) $right1->users_id, 'right') : null;
+        $business = $volumes->sideTotalsForUser($rootId);
 
         return view('customer.tree.index', [
             'isOwnTree' => $isOwnTree,
@@ -50,6 +52,8 @@ class TreeController extends Controller
             'rightChild2' => $right2,
             'leftChild3' => $left3,
             'rightChild3' => $right3,
+            'leftBusiness' => $business['left_total'],
+            'rightBusiness' => $business['right_total'],
             'inviteBase' => url('/customer/register'),
             'brand' => config('citymax.name'),
         ]);

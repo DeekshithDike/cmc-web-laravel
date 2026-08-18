@@ -20,6 +20,15 @@ Route::middleware(['auth:admin', 'admin'])->prefix('admin')->name('admin.')->gro
     Route::get('/users/export', [ExportController::class, 'activeUsers'])->name('users.export');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])
+        ->whereNumber('user')
+        ->name('users.edit');
+    Route::put('/users/{user}', [UserController::class, 'update'])
+        ->whereNumber('user')
+        ->name('users.update');
+    Route::put('/users/{user}/password', [UserController::class, 'updatePassword'])
+        ->whereNumber('user')
+        ->name('users.password');
 
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/payments/start', [PaymentController::class, 'start'])->name('payments.start');

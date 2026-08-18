@@ -25,3 +25,19 @@ body { background: #eef3f9 !important; }
 .btn-primary, .btn-info { background: #00a3ff !important; border-color: #00a3ff !important; }
 .gray-bg { background: #eef3f9 !important; }
 .navbar-minimalize { background: #00a3ff !important; border-color: #00a3ff !important; }
+
+.cmc-actions-table { overflow: visible; }
+.cmc-row-actions .dropdown-menu { min-width: 140px; }
+.cmc-readonly-dl {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  column-gap: 12px;
+  row-gap: 10px;
+  margin: 0;
+}
+.cmc-readonly-dl dt,
+.cmc-readonly-dl dd {
+  width: auto;
+  margin: 0;
+  float: none;
+}

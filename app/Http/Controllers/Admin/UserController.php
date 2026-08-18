@@ -9,8 +9,10 @@ use App\Models\User;
 use App\Services\Auth\MemberCredentialsNotifier;
 use App\Services\Membership\MembershipService;
 use App\Support\AdminList;
+use App\Support\MemberRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use InvalidArgumentException;
 use Throwable;
@@ -50,8 +52,8 @@ class UserController extends Controller
     public function store(Request $request, MembershipService $membership, MemberCredentialsNotifier $credentials): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:60'],
-            'email' => ['required', 'email', 'max:100', 'unique:users,email'],
+            'name' => MemberRules::name(),
+            'email' => MemberRules::email(),
             'phone' => ['nullable', 'string', 'max:20'],
             'country' => ['nullable', 'string', 'max:50'],
             'sponsor_id' => ['required', 'integer', 'exists:users,id'],
@@ -69,5 +71,49 @@ class UserController extends Controller
         $credentials->email($user);
 
         return $this->redirectToOneTimeCredentials((int) $user->id, (string) $user->plain_password);
+    }
+
+    public function edit(User $user): View
+    {
+        $customer = $this->activeCustomer($user);
+        $customer->load(['package:id,name', 'sponsor:id,name', 'parent:id,name']);
+
+        return view('admin.users.edit', ['user' => $customer]);
+    }
+
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        $customer = $this->activeCustomer($user);
+
+        $data = $request->validate([
+            'name' => MemberRules::name(),
+            'email' => MemberRules::email((int) $customer->id),
+        ]);
+
+        $customer->fill($data)->save();
+
+        return back()->with('success', 'Profile updated successfully.');
+    }
+
+    public function updatePassword(Request $request, User $user): RedirectResponse
+    {
+        $customer = $this->activeCustomer($user);
+
+        $data = $request->validate([
+            'password' => ['required', 'confirmed', MemberRules::assignedPassword()],
+        ]);
+
+        $customer->password = $data['password'];
+        $customer->setRememberToken(Str::random(60));
+        $customer->save();
+
+        return back()->with('success', 'Password updated successfully.');
+    }
+
+    private function activeCustomer(User $user): User
+    {
+        abort_unless($user->isCustomer() && $user->is_active, 404);
+
+        return $user;
     }
 }

@@ -109,6 +109,19 @@
         <button type="button" onclick="window.history.go(-1); return false;" class="inline-flex items-center h-10 px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">Go Back</button>
     </div>
 
+    <div class="grid grid-cols-2 gap-2 sm:gap-4 mb-5 max-w-xl mx-auto">
+        <div class="cmc-stat-card p-3 sm:p-4 text-center">
+            <p class="text-[11px] sm:text-xs font-medium text-muted uppercase tracking-wide"><i class="ph ph-arrow-fat-left"></i> Left business</p>
+            <p class="text-lg sm:text-2xl font-bold text-heading tabular-nums mt-1 leading-tight">${{ number_format((float) $leftBusiness, 2) }}</p>
+            <p class="text-[10px] sm:text-xs text-muted mt-1">Active packages</p>
+        </div>
+        <div class="cmc-stat-card is-accent p-3 sm:p-4 text-center">
+            <p class="text-[11px] sm:text-xs font-medium text-muted uppercase tracking-wide"><i class="ph ph-arrow-fat-right"></i> Right business</p>
+            <p class="text-lg sm:text-2xl font-bold text-heading tabular-nums mt-1 leading-tight">${{ number_format((float) $rightBusiness, 2) }}</p>
+            <p class="text-[10px] sm:text-xs text-muted mt-1">Active packages</p>
+        </div>
+    </div>
+
     <div class="cmc-tree-wrap">
         <table class="cmc-tree" align="center">
             {{-- Level 1: root centered over columns 2-3 --}}

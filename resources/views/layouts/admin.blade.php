@@ -31,7 +31,7 @@
                 <li class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                     <a href="{{ route('admin.dashboard') }}"><i class="fa fa-th-large"></i> <span class="nav-label">Dashboard</span></a>
                 </li>
-                <li class="{{ request()->routeIs('admin.users.index') ? 'active' : '' }}">
+                <li class="{{ request()->routeIs('admin.users.index', 'admin.users.edit') ? 'active' : '' }}">
                     <a href="{{ route('admin.users.index') }}"><i class="fa fa-users"></i> <span class="nav-label">Active Users List</span></a>
                 </li>
                 <li class="{{ request()->routeIs('admin.users.create') ? 'active' : '' }}">

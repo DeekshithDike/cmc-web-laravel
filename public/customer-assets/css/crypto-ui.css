@@ -88,6 +88,35 @@ html.dark body.cmc-guest-body {
 }
 .cmc-hero-wallet > * { position: relative; z-index: 1; }
 
+.cmc-roi-wallet {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--color-primary) 16%, var(--cmc-panel, #fff)) 0%,
+      var(--cmc-panel, #fff) 58%);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+.cmc-roi-wallet::before {
+  content: "";
+  position: absolute;
+  width: 11rem;
+  height: 11rem;
+  right: -2.5rem;
+  top: -3.5rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 70%);
+  pointer-events: none;
+}
+.cmc-roi-wallet > * { position: relative; z-index: 1; }
+.cmc-roi-metric {
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--cmc-panel, #fff));
+}
+
 .cmc-stat-card,
 .cmc-panel,
 .cmc-quick-link {

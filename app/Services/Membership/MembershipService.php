@@ -96,7 +96,7 @@ class MembershipService
             $user = User::query()->create([
                 'name' => 'Power ID',
                 'email' => 'power+'.Str::lower(Str::random(10)).'@citymax.local',
-                'password' => Str::password(16),
+                'password' => $this->generatePassword(),
                 'role' => UserRole::Customer,
                 'status' => UserStatus::Inactive,
                 'is_active' => false,
@@ -214,6 +214,26 @@ class MembershipService
 
     private function generatePassword(): string
     {
-        return Str::password(12);
+        $letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $digits = '0123456789';
+        $symbols = '@#';
+        $all = $letters.$digits.$symbols;
+
+        $chars = [
+            $letters[random_int(0, strlen($letters) - 1)],
+            $digits[random_int(0, strlen($digits) - 1)],
+            $symbols[random_int(0, strlen($symbols) - 1)],
+        ];
+
+        for ($i = count($chars); $i < 6; $i++) {
+            $chars[] = $all[random_int(0, strlen($all) - 1)];
+        }
+
+        for ($i = count($chars) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        }
+
+        return implode('', $chars);
     }
 }

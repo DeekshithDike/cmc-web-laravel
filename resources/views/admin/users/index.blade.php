@@ -17,9 +17,9 @@
             <a href="{{ route('admin.users.create') }}" class="btn btn-info m-l-sm">Add New User</a>
             <a href="{{ route('admin.users.export', array_filter(['q' => $q, 'package_id' => $packageId ?: null])) }}" class="btn btn-success m-l-sm">Download Excel (CSV)</a>
         </form>
-        <div class="table-responsive">
+        <div class="table-responsive cmc-actions-table">
             <table class="table table-striped">
-                <thead><tr><th>Customer ID</th><th>Name</th><th>Email</th><th>Package</th><th>Wallet</th><th>Expiry</th></tr></thead>
+                <thead><tr><th>Customer ID</th><th>Name</th><th>Email</th><th>Package</th><th>Wallet</th><th>Expiry</th><th class="text-right">Actions</th></tr></thead>
                 <tbody>
                 @forelse($users as $user)
                     <tr>
@@ -29,9 +29,14 @@
                         <td>{{ $user->package->name ?? '—' }}</td>
                         <td>${{ number_format((float)$user->wallet_balance, 2) }}</td>
                         <td>{{ $user->expiry_date?->format('Y-m-d') }}</td>
+                        <td class="text-right">
+                            @include('admin.partials.row-actions', ['actions' => [
+                                ['label' => 'Edit', 'url' => route('admin.users.edit', $user), 'icon' => 'fa-pencil'],
+                            ]])
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">No users found.</td></tr>
+                    <tr><td colspan="7">No users found.</td></tr>
                 @endforelse
                 </tbody>
             </table>

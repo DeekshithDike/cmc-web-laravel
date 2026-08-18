@@ -8,6 +8,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Services\Membership\MembershipService;
 use App\Services\Payments\PaymentService;
+use App\Support\MemberRules;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -59,8 +60,8 @@ class CustomerRegisterController extends Controller
     public function store(Request $request, MembershipService $membership, PaymentService $payments): RedirectResponse|JsonResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:60'],
-            'email' => ['required', 'email', 'max:100', 'unique:users,email'],
+            'name' => MemberRules::name(),
+            'email' => MemberRules::email(),
             'phone' => ['nullable', 'string', 'max:20'],
             'country' => ['nullable', 'string', 'max:50'],
             'package_id' => ['required', 'integer', 'exists:packages,id'],
@@ -185,8 +186,8 @@ class CustomerRegisterController extends Controller
     public function specialStore(Request $request, PaymentService $payments): RedirectResponse|JsonResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:60'],
-            'email' => ['required', 'email', 'max:100', 'unique:users,email'],
+            'name' => MemberRules::name(),
+            'email' => MemberRules::email(),
             'phone' => ['nullable', 'string', 'max:20'],
             'country' => ['nullable', 'string', 'max:50'],
             'package_id' => ['required', 'integer', 'exists:packages,id'],

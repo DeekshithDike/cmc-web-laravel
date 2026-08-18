@@ -86,6 +86,33 @@
     </section>
 </div>
 
+<section class="cmc-roi-wallet p-5 sm:p-6 mb-6">
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+            <span class="cmc-chip"><i class="ph ph-chart-line-up"></i> ROI wallet income</span>
+            <p class="text-sm text-muted mt-2">Daily package ROI credited to your wallet</p>
+        </div>
+        <p class="text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
+            {{ $roiDays }} {{ $roiDays === 1 ? 'day' : 'days' }} paid
+        </p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="cmc-roi-metric p-4">
+            <p class="text-[11px] text-muted uppercase tracking-wide">Today</p>
+            <p class="text-2xl sm:text-3xl font-bold text-heading tracking-tight mt-1">${{ number_format((float) $roiToday, 2) }}</p>
+        </div>
+        <div class="cmc-roi-metric p-4">
+            <p class="text-[11px] text-muted uppercase tracking-wide">Total ROI</p>
+            <p class="text-2xl sm:text-3xl font-bold text-heading tracking-tight mt-1">${{ number_format((float) $roiTotal, 2) }}</p>
+        </div>
+        <div class="cmc-roi-metric p-4">
+            <p class="text-[11px] text-muted uppercase tracking-wide">Days</p>
+            <p class="text-2xl sm:text-3xl font-bold text-heading tracking-tight mt-1">{{ $roiDays }}</p>
+            <p class="text-xs text-muted mt-1">Weekdays with ROI</p>
+        </div>
+    </div>
+</section>
+
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
     @foreach ([
         ['Today Left', '$'.$leftBusinessToday, 'ph-arrow-fat-left', ''],

@@ -261,6 +261,7 @@ class CronEmailDatabaseUiPerformanceTest extends TestCase
             ->assertOk()
             ->assertSee('Available balance', false)
             ->assertSee('Customer ID '.$this->root->id, false)
+            ->assertSee('ROI wallet income', false)
             ->assertSee('My Tree', false)
             ->assertSee('Withdrawal Now', false)
             ->assertSee('Income History', false)

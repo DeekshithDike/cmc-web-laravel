@@ -89,6 +89,19 @@ class BusinessVolumeService
     }
 
     /**
+     * Lifetime package volume on each leg of this ID.
+     *
+     * @return array{left_total: string, right_total: string}
+     */
+    public function sideTotalsForUser(int $userId): array
+    {
+        return [
+            'left_total' => $this->sumSide(BinaryTreeLeft::class, $userId, null),
+            'right_total' => $this->sumSide(BinaryTreeRight::class, $userId, null),
+        ];
+    }
+
+    /**
      * @return array{left_today: string, right_today: string, left_total: string, right_total: string}
      */
     public function volumeForUser(int $userId, ?string $today = null): array
@@ -98,8 +111,7 @@ class BusinessVolumeService
         return [
             'left_today' => $this->sumSide(BinaryTreeLeft::class, $userId, $today),
             'right_today' => $this->sumSide(BinaryTreeRight::class, $userId, $today),
-            'left_total' => $this->sumSide(BinaryTreeLeft::class, $userId, null),
-            'right_total' => $this->sumSide(BinaryTreeRight::class, $userId, null),
+            ...$this->sideTotalsForUser($userId),
         ];
     }
 

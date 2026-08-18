@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Support\MemberRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class PasswordController extends Controller
@@ -19,7 +19,7 @@ class PasswordController extends Controller
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password:customer'],
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'password' => ['required', 'confirmed', MemberRules::assignedPassword()],
         ]);
 
         $user = $request->user('customer');

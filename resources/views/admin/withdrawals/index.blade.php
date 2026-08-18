@@ -32,6 +32,11 @@
                     <td>{{ $item->payout_provider ?? '—' }}@if($item->payout_ref)<br><small class="text-muted">{{ $item->payout_ref }}</small>@endif</td>
                     <td>{{ $item->created_at?->format('Y-m-d H:i') }}</td>
                     @if($status->value === 'pending')
+                    @php
+                        $networkLabel = \App\Support\UsdtWalletAddress::label(
+                            \App\Support\UsdtWalletAddress::network((string) $item->wallet_address) ?? ($item->meta['network'] ?? null)
+                        );
+                    @endphp
                     <td>
                         <button
                             type="button"
@@ -44,6 +49,7 @@
                             data-fee="${{ number_format((float)$item->fee, 2) }}"
                             data-payable="${{ number_format((float)$item->payable_amount, 2) }}"
                             data-wallet="{{ $item->wallet_address }}"
+                            data-network="{{ $networkLabel }}"
                             data-date="{{ $item->created_at?->format('Y-m-d H:i') }}"
                         >Pay Now</button>
                         <button
@@ -57,6 +63,7 @@
                             data-fee="${{ number_format((float)$item->fee, 2) }}"
                             data-payable="${{ number_format((float)$item->payable_amount, 2) }}"
                             data-wallet="{{ $item->wallet_address }}"
+                            data-network="{{ $networkLabel }}"
                             data-date="{{ $item->created_at?->format('Y-m-d H:i') }}"
                         >Decline</button>
                     </td>
@@ -91,6 +98,7 @@
                         <tr><th>Fee</th><td id="wdDetailFee"></td></tr>
                         <tr><th>Payable</th><td id="wdDetailPayable"></td></tr>
                         <tr><th>Wallet address</th><td id="wdDetailWallet" class="text-break"></td></tr>
+                        <tr><th>Network</th><td id="wdDetailNetwork"></td></tr>
                         <tr><th>Requested at</th><td id="wdDetailDate"></td></tr>
                         </tbody>
                     </table>
@@ -101,7 +109,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">No</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn" id="wdConfirmSubmit">Yes</button>
                 </div>
             </form>
@@ -128,16 +136,16 @@
         $form.attr('action', $btn.data('action'));
         $('#wdRemarks').val('');
 
-        $('#wdConfirmTitle').text(isPay ? 'Confirm payout' : 'Confirm decline');
+        $('#wdConfirmTitle').text(isPay ? 'Pay this withdrawal?' : 'Decline this withdrawal?');
         $('#wdConfirmLead').html(
             isPay
                 ? 'You are about to <strong>pay</strong> this withdrawal. The payable amount will be sent to the wallet address shown below.'
-                : 'You are about to <strong>decline</strong> this withdrawal. The requested amount minus the fee will be refunded to the user wallet balance.'
+                : 'You are about to <strong>decline</strong> this withdrawal. The requested amount minus the fee will be refunded to the member wallet balance.'
         );
         $('#wdConfirmAsk').text(
             isPay
-                ? 'Do you want to pay this withdrawal now?'
-                : 'Do you want to decline this withdrawal?'
+                ? 'This cannot be undone from this screen. Continue only if you intend to send this payout now.'
+                : 'This cannot be undone from this screen. Continue only if you intend to reject this request now.'
         );
 
         $('#wdDetailId').text($btn.data('id'));
@@ -146,13 +154,14 @@
         $('#wdDetailFee').text($btn.data('fee'));
         $('#wdDetailPayable').text($btn.data('payable'));
         $('#wdDetailWallet').text($btn.data('wallet'));
+        $('#wdDetailNetwork').text($btn.data('network') || '—');
         $('#wdDetailDate').text($btn.data('date'));
 
         $submit
             .removeClass('btn-primary btn-danger')
             .addClass(isPay ? 'btn-primary' : 'btn-danger')
             .prop('disabled', false)
-            .text('Yes');
+            .text(isPay ? 'Yes, pay now' : 'Yes, decline');
 
         submitting = false;
         $modal.modal('show');

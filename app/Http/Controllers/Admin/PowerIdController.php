@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Auth\MemberCredentialsNotifier;
 use App\Services\Membership\MembershipService;
 use App\Support\AdminList;
+use App\Support\MemberRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -76,8 +77,8 @@ class PowerIdController extends Controller
     {
         $data = $request->validate([
             'power_id' => ['required', 'integer', 'exists:users,id'],
-            'name' => ['required', 'string', 'max:60'],
-            'email' => ['required', 'email', 'max:100', 'unique:users,email'],
+            'name' => MemberRules::name(),
+            'email' => MemberRules::email(),
             'phone' => ['nullable', 'string', 'max:20'],
             'country' => ['nullable', 'string', 'max:50'],
             'package_id' => ['required', 'integer', 'exists:packages,id'],

@@ -120,6 +120,7 @@ class AllEndpointsAndUseCasesTest extends TestCase
             route('admin.dashboard'),
             route('admin.users.index'),
             route('admin.users.create'),
+            route('admin.users.edit', $this->root),
             route('admin.payments.index'),
             route('admin.income.daily'),
             route('admin.power.index'),
