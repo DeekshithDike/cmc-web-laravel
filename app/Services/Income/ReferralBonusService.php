@@ -5,6 +5,7 @@ namespace App\Services\Income;
 use App\Enums\UserRole;
 use App\Models\ReferralIncome;
 use App\Models\User;
+use App\Support\IncomeCalendar;
 
 class ReferralBonusService
 {
@@ -31,7 +32,7 @@ class ReferralBonusService
             return;
         }
 
-        $asOf = $asOf ?: now()->toDateString();
+        $asOf = $asOf ?: IncomeCalendar::today();
 
         $alreadyRecorded = ReferralIncome::query()
             ->where('from_user_id', $member->id)

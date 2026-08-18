@@ -44,7 +44,7 @@ class LandingPageTest extends TestCase
             $response->assertSee('$'.number_format($amount), false);
         }
         $response->assertSee('1% daily', false);
-        $response->assertSee('Tuesday through Saturday', false);
+        $response->assertSee('Monday through Friday', false);
         $response->assertSee('Tue–Sat', false);
         $response->assertSee('10% daily', false);
         $response->assertSee('5% matching', false);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\Business\BusinessVolumeService;
 use App\Support\AdminList;
+use App\Support\IncomeCalendar;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -16,7 +17,7 @@ class BusinessController extends Controller
 
     public function allUsers(Request $request): View
     {
-        $date = $request->string('date')->toString() ?: now()->toDateString();
+        $date = $request->string('date')->toString() ?: IncomeCalendar::today();
         $q = AdminList::search($request);
 
         return view('admin.business.all', [
@@ -28,8 +29,8 @@ class BusinessController extends Controller
 
     public function offer(Request $request): View
     {
-        $from = $request->string('from')->toString() ?: now()->subDays(9)->toDateString();
-        $to = $request->string('to')->toString() ?: now()->toDateString();
+        $from = $request->string('from')->toString() ?: now(IncomeCalendar::timezone())->subDays(9)->toDateString();
+        $to = $request->string('to')->toString() ?: IncomeCalendar::today();
         $q = AdminList::search($request);
 
         return view('admin.business.offer', [

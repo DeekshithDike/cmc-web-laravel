@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\ReferralIncome;
 use App\Services\Business\BusinessVolumeService;
+use App\Support\IncomeCalendar;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -14,7 +15,7 @@ class DashboardController extends Controller
     {
         $user = $request->user('customer')->load('package:id,amount');
         $volume = $volumes->volumeForUser((int) $user->id);
-        $today = now()->toDateString();
+        $today = IncomeCalendar::today();
 
         $warningDays = (int) config('citymax.membership.expiry_warning_days');
         $daysLeft = null;

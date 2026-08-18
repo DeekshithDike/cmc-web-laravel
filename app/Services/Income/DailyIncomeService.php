@@ -13,7 +13,7 @@ use App\Models\ReferralIncome;
 use App\Models\User;
 use App\Services\Calc\CalcDispatcher;
 use App\Services\Wallet\WalletService;
-use Illuminate\Support\Carbon;
+use App\Support\IncomeCalendar;
 use Illuminate\Support\Facades\DB;
 
 class DailyIncomeService
@@ -24,12 +24,9 @@ class DailyIncomeService
     ) {
     }
 
-    public function previousDate(?Carbon $now = null): string
+    public function previousDate(?\Illuminate\Support\Carbon $now = null): string
     {
-        $tz = (string) config('citymax.income.timezone', 'Asia/Kuala_Lumpur');
-        $now = $now ? $now->copy()->timezone($tz) : now($tz);
-
-        return $now->subDay()->toDateString();
+        return IncomeCalendar::previousDate($now);
     }
 
     /**
@@ -98,6 +95,106 @@ class DailyIncomeService
     }
 
     /**
+     * Pay 1% ROI for a past day without re-running binary or referral.
+     * Members who already have roi_amount > 0 for that day are skipped.
+     *
+     * @return array{credited: int, total: string, asOf: string, message: string}
+     */
+    public function creditMissingRoi(string $asOf, string $triggeredBy = 'admin'): array
+    {
+        if (! IncomeCalendar::paysRoiOn($asOf)) {
+            return [
+                'credited' => 0,
+                'total' => '0.00',
+                'asOf' => $asOf,
+                'message' => "ROI is not paid on {$asOf} (Saturday/Sunday).",
+            ];
+        }
+
+        $credited = 0;
+        $totalRoi = '0.00';
+
+        User::query()
+            ->where('role', UserRole::Customer)
+            ->where('is_active', true)
+            ->where('payment_status', true)
+            ->whereDate('expiry_date', '>=', $asOf)
+            ->with('package:id,amount,roi_percent')
+            ->orderBy('id')
+            ->chunkById(200, function ($users) use ($asOf, &$credited, &$totalRoi) {
+                foreach ($users as $user) {
+                    $packageAmount = (float) ($user->package->amount ?? 0);
+                    $roiPercent = (float) ($user->package->roi_percent ?? 0);
+                    $roi = $packageAmount > 0 && $roiPercent > 0
+                        ? round($packageAmount * ($roiPercent / 100), 2)
+                        : 0.0;
+
+                    if ($roi <= 0) {
+                        continue;
+                    }
+
+                    $roiFormatted = number_format($roi, 2, '.', '');
+                    $existing = PaymentDetail::query()
+                        ->where('user_id', $user->id)
+                        ->whereDate('paid_on', $asOf)
+                        ->first();
+
+                    if ($existing && (float) $existing->roi_amount > 0) {
+                        continue;
+                    }
+
+                    DB::transaction(function () use ($user, $asOf, $roi, $roiFormatted, $existing) {
+                        if ($existing) {
+                            $existing->roi_amount = $roiFormatted;
+                            $existing->total_amount = bcadd(
+                                bcadd((string) $existing->binary_amount, (string) $existing->referral_amount, 2),
+                                $roiFormatted,
+                                2
+                            );
+                            $existing->save();
+                        } else {
+                            PaymentDetail::query()->create([
+                                'user_id' => $user->id,
+                                'roi_amount' => $roiFormatted,
+                                'binary_amount' => '0.00',
+                                'referral_amount' => '0.00',
+                                'total_amount' => $roiFormatted,
+                                'paid_on' => $asOf,
+                            ]);
+                        }
+
+                        $this->wallet->credit($user, $roi, 'daily_roi');
+                    });
+
+                    $credited++;
+                    $totalRoi = bcadd($totalRoi, $roiFormatted, 2);
+                    $user->unsetRelation('package');
+                }
+            });
+
+        $run = DailyIncomeRun::query()->whereDate('as_of', $asOf)->first();
+        if ($run) {
+            $run->update([
+                'triggered_by' => $triggeredBy,
+                'processed' => PaymentDetail::query()->whereDate('paid_on', $asOf)->count(),
+                'total_paid' => number_format(
+                    (float) PaymentDetail::query()->whereDate('paid_on', $asOf)->sum('total_amount'),
+                    2,
+                    '.',
+                    ''
+                ),
+            ]);
+        }
+
+        return [
+            'credited' => $credited,
+            'total' => $totalRoi,
+            'asOf' => $asOf,
+            'message' => "Missing ROI for {$asOf}: {$credited} members, \${$totalRoi} credited. Referral and binary were not re-paid.",
+        ];
+    }
+
+    /**
      * @return array{skipped: bool, run?: DailyIncomeRun, result?: array{processed: int, total: string, asOf: string, skipped: bool, message: string}}
      */
     private function claimRun(string $asOf, string $triggeredBy): array
@@ -138,7 +235,7 @@ class DailyIncomeService
     {
         $packageAmount = (float) ($user->package->amount ?? 0);
         $roiPercent = (float) ($user->package->roi_percent ?? 0);
-        $roi = $this->paysRoiOn($asOf) && $packageAmount > 0 && $roiPercent > 0
+        $roi = IncomeCalendar::paysRoiOn($asOf) && $packageAmount > 0 && $roiPercent > 0
             ? round($packageAmount * ($roiPercent / 100), 2)
             : 0.0;
 
@@ -198,16 +295,6 @@ class DailyIncomeService
         });
 
         return $walletCredit;
-    }
-
-    /**
-     * Reference Node skips JS getDay() 0 and 1: Sunday and Monday.
-     */
-    private function paysRoiOn(string $asOf): bool
-    {
-        $day = Carbon::parse($asOf)->dayOfWeek;
-
-        return $day !== Carbon::SUNDAY && $day !== Carbon::MONDAY;
     }
 
     /**

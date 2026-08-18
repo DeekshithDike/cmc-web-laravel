@@ -381,11 +381,11 @@ class MoneyPathAndIncomeTest extends TestCase
         $this->assertSame(1, DailyIncomeRun::query()->whereDate('as_of', '2026-08-13')->count());
     }
 
-    public function test_roi_is_not_paid_on_sunday_or_monday(): void
+    public function test_roi_is_not_paid_on_saturday_or_sunday(): void
     {
         $before = number_format((float) $this->root->wallet_balance, 2, '.', '');
 
-        foreach (['2026-08-16', '2026-08-17'] as $asOf) {
+        foreach (['2026-08-15', '2026-08-16'] as $asOf) {
             app(DailyIncomeService::class)->run($asOf);
             $this->assertSame(
                 0,
@@ -400,9 +400,18 @@ class MoneyPathAndIncomeTest extends TestCase
         $this->assertEquals($before, number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
     }
 
-    public function test_roi_is_paid_on_saturday(): void
+    public function test_roi_is_paid_on_monday(): void
     {
-        $asOf = '2026-08-15';
+        $asOf = '2026-08-17';
+        app(DailyIncomeService::class)->run($asOf);
+
+        $row = PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->firstOrFail();
+        $this->assertSame('1.00', number_format((float) $row->roi_amount, 2, '.', ''));
+    }
+
+    public function test_roi_is_paid_on_friday(): void
+    {
+        $asOf = '2026-08-14';
         app(DailyIncomeService::class)->run($asOf);
 
         $row = PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->firstOrFail();
@@ -443,6 +452,41 @@ class MoneyPathAndIncomeTest extends TestCase
             number_format($before + 15.00, 2, '.', ''),
             number_format((float) $this->root->fresh()->wallet_balance, 2, '.', '')
         );
+    }
+
+    public function test_missing_roi_backfill_does_not_repay_referral(): void
+    {
+        $asOf = '2026-08-17';
+        ReferralIncome::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '200.00',
+            'earned_on' => $asOf,
+        ]);
+
+        app(DailyIncomeService::class)->run($asOf);
+
+        $row = PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->firstOrFail();
+        $this->assertSame('1.00', number_format((float) $row->roi_amount, 2, '.', ''));
+        $this->assertSame('20.00', number_format((float) $row->referral_amount, 2, '.', ''));
+        $before = number_format((float) $this->root->fresh()->wallet_balance, 2, '.', '');
+
+        $row->update(['roi_amount' => '0.00', 'total_amount' => '20.00']);
+        WalletTransaction::query()->where('user_id', $this->root->id)->where('reason', 'daily_roi')->delete();
+        $this->root->update(['wallet_balance' => bcsub($before, '1.00', 2)]);
+
+        $result = app(DailyIncomeService::class)->creditMissingRoi($asOf, 'admin');
+        $this->assertSame(1, $result['credited']);
+
+        $fresh = PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->firstOrFail();
+        $this->assertSame('1.00', number_format((float) $fresh->roi_amount, 2, '.', ''));
+        $this->assertSame('20.00', number_format((float) $fresh->referral_amount, 2, '.', ''));
+        $this->assertSame('21.00', number_format((float) $fresh->total_amount, 2, '.', ''));
+        $this->assertSame(1, WalletTransaction::query()->where('user_id', $this->root->id)->where('reason', 'daily_referral')->count());
+        $this->assertSame(1, WalletTransaction::query()->where('user_id', $this->root->id)->where('reason', 'daily_roi')->count());
+
+        $again = app(DailyIncomeService::class)->creditMissingRoi($asOf, 'admin');
+        $this->assertSame(0, $again['credited']);
     }
 
     public function test_wallet_writes_ledger_rows(): void

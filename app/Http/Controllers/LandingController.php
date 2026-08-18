@@ -133,7 +133,7 @@ class LandingController extends Controller
                             'name' => 'How does daily ROI work?',
                             'acceptedAnswer' => [
                                 '@type' => 'Answer',
-                                'text' => 'Activated packages earn 1% daily ROI, credited Tuesday through Saturday (Sunday and Monday are skipped).',
+                                'text' => 'Activated packages earn 1% daily ROI, credited Monday through Friday (Saturday and Sunday are skipped).',
                             ],
                         ],
                         [

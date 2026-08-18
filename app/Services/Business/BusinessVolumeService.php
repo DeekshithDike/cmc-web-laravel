@@ -8,6 +8,7 @@ use App\Models\BinaryTreeLeft;
 use App\Models\BinaryTreeRight;
 use App\Models\User;
 use App\Support\AdminList;
+use App\Support\IncomeCalendar;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +24,7 @@ class BusinessVolumeService
             return;
         }
 
-        $asOf = $asOf ?: now()->toDateString();
+        $asOf = $asOf ?: IncomeCalendar::today();
         $formatted = number_format($amount, 2, '.', '');
         $fromUserId = (int) $child->id;
         $ancestorId = (int) $child->parent_id;
@@ -92,7 +93,7 @@ class BusinessVolumeService
      */
     public function volumeForUser(int $userId, ?string $today = null): array
     {
-        $today = $today ?: now()->toDateString();
+        $today = $today ?: IncomeCalendar::today();
 
         return [
             'left_today' => $this->sumSide(BinaryTreeLeft::class, $userId, $today),
@@ -107,7 +108,7 @@ class BusinessVolumeService
      */
     public function platformVolume(?string $today = null): array
     {
-        $today = $today ?: now()->toDateString();
+        $today = $today ?: IncomeCalendar::today();
         $leftTotal = (float) BinaryTreeLeft::query()->sum('amount');
         $rightTotal = (float) BinaryTreeRight::query()->sum('amount');
         $leftToday = (float) BinaryTreeLeft::query()->whereDate('business_date', $today)->sum('amount');

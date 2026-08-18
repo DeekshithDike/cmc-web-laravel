@@ -245,7 +245,7 @@
                 <div class="faq-list">
                     <details open>
                         <summary>How does daily ROI work?</summary>
-                        <p>Activated packages earn 1% daily ROI, credited Tuesday through Saturday (Sunday and Monday are skipped).</p>
+                        <p>Activated packages earn 1% daily ROI, credited Monday through Friday (Saturday and Sunday are skipped).</p>
                     </details>
                     <details>
                         <summary>What is the referral bonus?</summary>
