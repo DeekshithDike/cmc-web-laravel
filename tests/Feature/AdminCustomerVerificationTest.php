@@ -52,7 +52,7 @@ class AdminCustomerVerificationTest extends TestCase
             ->assertOk()
             ->assertSee('Customer verification', false)
             ->assertSee('Customer ID (required)', false)
-            ->assertDontSee('Period totals', false);
+            ->assertDontSee('Income and business for these dates', false);
 
         $html = $this->actingAs($this->admin)
             ->get(route('admin.users.index'))
@@ -80,11 +80,12 @@ class AdminCustomerVerificationTest extends TestCase
             ->assertSee('Activated date', false)
             ->assertSee(\App\Support\IncomeCalendar::formatWhen($this->root->fresh()->created_at), false)
             ->assertDontSee('Today Malaysia', false)
-            ->assertSee('Period totals', false)
-            ->assertSee('Day-wise ledger', false)
+            ->assertSee('Income and business for these dates · #'.$this->root->id, false)
+            ->assertSee('Day-wise ledger · #'.$this->root->id, false)
             ->assertDontSee('Why this day', false)
-            ->assertSee('Left / Right breakdown', false)
-            ->assertSee('Referral breakdown', false)
+            ->assertSee('Left / Right breakdown · #'.$this->root->id, false)
+            ->assertSee('Referral breakdown · #'.$this->root->id, false)
+            ->assertSee('joined with #'.$this->root->id.' as <strong>sponsor</strong>', false)
             ->assertSee('Left Child', false)
             ->assertSee('Right Child', false)
             ->assertSee('#'.$left->id, false)
@@ -94,7 +95,10 @@ class AdminCustomerVerificationTest extends TestCase
         $this->assertStringContainsString('ROI paid', $html);
         $this->assertStringContainsString('Binary paid', $html);
         $this->assertStringContainsString('Matched business', $html);
-        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringContainsString('id="verification-custom-dates"', $html);
+        $this->assertStringContainsString('style="display:none"', $html);
+        $this->assertStringContainsString('Ledger: days with business or pay', $html);
+        $this->assertStringNotContainsString('Days with activity', $html);
     }
 
     public function test_today_filter_and_complaint_focus_change_what_admin_sees(): void
@@ -107,9 +111,15 @@ class AdminCustomerVerificationTest extends TestCase
                 'q' => $this->root->id,
                 'range' => 'today',
                 'focus' => 'roi',
+                'from' => '2026-08-01',
+                'to' => '2026-08-10',
             ]))
             ->assertOk()
-            ->assertSee('Today is not paid yet', false)
+            ->assertSee('Today has not been paid yet', false)
+            ->assertSee('pays yesterday, not today', false)
+            ->assertSee('Daily Paid Income', false)
+            ->assertSee('id="verification-custom-dates" style="display:none"', false)
+            ->assertDontSee('name="from" value="2026-08-01"', false)
             ->assertDontSee('Left / Right breakdown', false)
             ->assertDontSee('Referral breakdown', false);
 
@@ -269,13 +279,13 @@ class AdminCustomerVerificationTest extends TestCase
             ->assertSee('Select a customer', false)
             ->assertSee('Verify Twin One', false)
             ->assertSee('Verify Twin Two', false)
-            ->assertDontSee('Period totals', false);
+            ->assertDontSee('Income and business for these dates', false);
 
         $this->actingAs($this->admin)
             ->get(route('admin.verification.index', ['q' => (string) $this->admin->id]))
             ->assertOk()
             ->assertSee('No customer matched', false)
-            ->assertDontSee('Period totals', false);
+            ->assertDontSee('Income and business for these dates', false);
     }
 
     public function test_other_customer_income_is_not_shown_and_names_are_escaped(): void
@@ -364,7 +374,10 @@ class AdminCustomerVerificationTest extends TestCase
             ->assertOk()
             ->assertSee('Showing 1–10 of 12', false)
             ->assertSee('12 Aug 2026 Wed', false)
-            ->assertDontSee('1 Aug 2026 Sat', false);
+            ->assertDontSee('1 Aug 2026 Sat', false)
+            ->assertSee('name="from"', false)
+            ->assertSee('value="2026-08-01"', false)
+            ->assertSee('value="2026-08-12"', false);
 
         $this->actingAs($this->admin)
             ->get(route('admin.verification.index', [
@@ -425,5 +438,180 @@ class AdminCustomerVerificationTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('Customer #'.$this->root->id, false);
+    }
+
+    public function test_all_filter_combinations_keep_correct_tables_dates_and_pagination(): void
+    {
+        DailyIncomeRun::query()->create([
+            'as_of' => '2026-08-18',
+            'status' => DailyIncomeRun::STATUS_COMPLETED,
+            'triggered_by' => 'cron',
+            'processed' => 1,
+            'total_paid' => '1.00',
+        ]);
+
+        BinaryTreeLeft::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '60.00',
+            'business_date' => '2026-08-14',
+        ]);
+        PaymentDetail::query()->create([
+            'user_id' => $this->root->id,
+            'roi_amount' => '1.00',
+            'binary_amount' => '0.00',
+            'referral_amount' => '0.00',
+            'total_amount' => '1.00',
+            'paid_on' => '2026-08-14',
+        ]);
+        PaymentDetail::query()->create([
+            'user_id' => $this->root->id,
+            'roi_amount' => '1.00',
+            'binary_amount' => '0.00',
+            'referral_amount' => '0.00',
+            'total_amount' => '1.00',
+            'paid_on' => '2026-08-18',
+        ]);
+        BinaryTreeLeft::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '80.00',
+            'business_date' => '2026-08-12',
+        ]);
+        BinaryTreeRight::query()->create([
+            'user_id' => $this->root->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '80.00',
+            'business_date' => '2026-08-12',
+        ]);
+        BinaryIncome::query()->create([
+            'user_id' => $this->root->id,
+            'amount' => '4.00',
+            'left_volume' => '80.00',
+            'right_volume' => '80.00',
+            'earned_on' => '2026-08-12',
+        ]);
+        PaymentDetail::query()->create([
+            'user_id' => $this->root->id,
+            'roi_amount' => '1.00',
+            'binary_amount' => '0.00',
+            'referral_amount' => '0.00',
+            'total_amount' => '1.00',
+            'paid_on' => '2026-08-11',
+        ]);
+        PaymentDetail::query()->create([
+            'user_id' => $this->root->id,
+            'roi_amount' => '1.00',
+            'binary_amount' => '4.00',
+            'referral_amount' => '0.00',
+            'total_amount' => '5.00',
+            'paid_on' => '2026-08-12',
+        ]);
+        PaymentDetail::query()->create([
+            'user_id' => $this->root->id,
+            'roi_amount' => '0.00',
+            'binary_amount' => '0.00',
+            'referral_amount' => '0.00',
+            'total_amount' => '0.00',
+            'paid_on' => '2026-08-15',
+        ]);
+        CarryForward::query()->create([
+            'user_id' => $this->root->id,
+            'left_carry' => '50.00',
+            'right_carry' => '0.00',
+            'as_of' => '2026-08-15',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', [
+                'q' => $this->root->id,
+                'range' => '7d',
+                'focus' => 'all',
+                'from' => '2026-01-01',
+                'to' => '2026-01-31',
+            ]))
+            ->assertOk()
+            ->assertSee('id="verification-custom-dates" style="display:none"', false)
+            ->assertDontSee('name="from" value="2026-01-01"', false)
+            ->assertSee('Left / Right breakdown · #'.$this->root->id, false)
+            ->assertSee('Referral breakdown · #'.$this->root->id, false)
+            ->assertSee('14 Aug 2026 Fri', false)
+            ->assertSee('18 Aug 2026 Tue', false)
+            ->assertDontSee('12 Aug 2026 Wed', false)
+            ->assertDontSee('11 Aug 2026 Tue', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', [
+                'q' => $this->root->id,
+                'range' => 'custom',
+                'from' => '2026-08-10',
+                'to' => '2026-08-12',
+                'days' => 'all',
+            ]))
+            ->assertOk()
+            ->assertSee('12 Aug 2026 Wed', false)
+            ->assertSee('11 Aug 2026 Tue', false)
+            ->assertSee('10 Aug 2026 Mon', false)
+            ->assertSee('value="2026-08-10"', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', [
+                'q' => $this->root->id,
+                'range' => 'custom',
+                'from' => '2026-08-11',
+                'to' => '2026-08-12',
+                'days' => 'match',
+            ]))
+            ->assertOk()
+            ->assertSee('12 Aug 2026 Wed', false)
+            ->assertDontSee('11 Aug 2026 Tue', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', [
+                'q' => $this->root->id,
+                'range' => 'custom',
+                'from' => '2026-08-11',
+                'to' => '2026-08-15',
+                'days' => 'zero',
+            ]))
+            ->assertOk()
+            ->assertSee('15 Aug 2026 Sat', false)
+            ->assertDontSee('12 Aug 2026 Wed', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', [
+                'q' => $this->root->id,
+                'range' => 'yesterday',
+                'from' => '2026-08-01',
+                'to' => '2026-08-12',
+            ]))
+            ->assertOk()
+            ->assertSee('18 Aug 2026 Tue', false)
+            ->assertDontSee('12 Aug 2026 Wed', false)
+            ->assertDontSee('name="from" value="2026-08-01"', false);
+
+        for ($i = 1; $i <= 12; $i++) {
+            ReferralIncome::query()->create([
+                'user_id' => $this->root->id,
+                'from_user_id' => $this->root->id,
+                'amount' => '100.00',
+                'earned_on' => Carbon::parse('2026-08-01')->addDays($i - 1)->toDateString(),
+            ]);
+        }
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', [
+                'q' => $this->root->id,
+                'range' => 'custom',
+                'from' => '2026-08-01',
+                'to' => '2026-08-12',
+                'focus' => 'referral',
+                'per_page' => 10,
+                'referrals_page' => 2,
+            ]))
+            ->assertOk()
+            ->assertSee('Referral breakdown · #'.$this->root->id, false)
+            ->assertDontSee('Left / Right breakdown', false)
+            ->assertSee('Showing 11–12 of 12', false);
     }
 }

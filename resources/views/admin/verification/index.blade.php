@@ -17,34 +17,36 @@
     <div class="ibox-title"><h5>Customer verification</h5></div>
     <div class="ibox-content">
         <p class="text-muted m-b-md">Look up one customer. Customer ID is required for a full picture. Date and complaint type are optional. Dates are Malaysia calendar days. This page is read-only.</p>
-        <form method="GET" action="{{ route('admin.verification.index') }}" class="form-inline m-b-sm">
+        <form method="GET" action="{{ route('admin.verification.index') }}" class="form-inline m-b-sm" id="verification-filters">
             <input type="text" name="q" value="{{ $q }}" class="form-control" placeholder="Customer ID (required) / name / email" maxlength="100" autocomplete="off">
-            <select name="range" class="form-control m-l-sm">
+            <select name="range" id="verification-range" class="form-control m-l-sm" title="Date range">
                 <option value="all" @selected($filters->range === 'all')>All dates</option>
                 <option value="today" @selected($filters->range === 'today')>Today</option>
                 <option value="yesterday" @selected($filters->range === 'yesterday')>Yesterday</option>
                 <option value="7d" @selected($filters->range === '7d')>Last 7 days</option>
                 <option value="custom" @selected($filters->range === 'custom')>Custom dates</option>
             </select>
-            <input type="date" name="from" value="{{ $filters->from }}" class="form-control m-l-sm" title="From date">
-            <input type="date" name="to" value="{{ $filters->to }}" class="form-control m-l-sm" title="To date">
-            <select name="focus" class="form-control m-l-sm">
+            <span id="verification-custom-dates"@if($filters->range !== 'custom') style="display:none"@endif>
+                <input type="date" name="from" id="verification-from" value="{{ $filters->from }}" class="form-control m-l-sm" title="From date" placeholder="From" @disabled($filters->range !== 'custom')>
+                <input type="date" name="to" id="verification-to" value="{{ $filters->to }}" class="form-control m-l-sm" title="To date" placeholder="To" @disabled($filters->range !== 'custom')>
+            </span>
+            <select name="focus" class="form-control m-l-sm" title="Complaint type">
                 <option value="all" @selected($filters->focus === 'all')>Full picture</option>
                 <option value="roi" @selected($filters->focus === 'roi')>ROI not received</option>
                 <option value="binary" @selected($filters->focus === 'binary')>Binary not matched</option>
                 <option value="business" @selected($filters->focus === 'business')>Left / right wrong</option>
                 <option value="referral" @selected($filters->focus === 'referral')>Referral not added</option>
             </select>
-            <select name="days" class="form-control m-l-sm">
-                <option value="activity" @selected($filters->days === 'activity')>Days with activity</option>
-                <option value="all" @selected($filters->days === 'all')>Every day</option>
-                <option value="match" @selected($filters->days === 'match')>Match days only</option>
-                <option value="zero" @selected($filters->days === 'zero')>Days with $0 income</option>
+            <select name="days" class="form-control m-l-sm" title="Which days to list in the day-wise ledger">
+                <option value="activity" @selected($filters->days === 'activity')>Ledger: days with business or pay</option>
+                <option value="all" @selected($filters->days === 'all')>Ledger: every calendar day</option>
+                <option value="match" @selected($filters->days === 'match')>Ledger: binary match days only</option>
+                <option value="zero" @selected($filters->days === 'zero')>Ledger: days with $0 paid</option>
             </select>
             <button class="btn btn-primary m-l-sm">Look up</button>
             <a href="{{ route('admin.verification.index') }}" class="btn btn-default m-l-sm">Reset</a>
         </form>
-        <p class="text-muted m-b-none">Custom dates apply when “Custom dates” is selected. Ledger, sources, and referrals are paginated.</p>
+        <p class="text-muted m-b-none">From and To dates appear only when “Custom dates” is selected. The ledger list can hide quiet days. Tables are paginated.</p>
     </div>
 </div>
 
@@ -83,6 +85,7 @@
 @if($report)
     @php
         $user = $report->user;
+        $cid = '#'.$user->id;
         $eligible = $report->eligibility['eligible'];
         $alertClass = $report->answer['tone'] === 'success' ? 'alert-success' : ($report->answer['tone'] === 'warning' ? 'alert-warning' : 'alert-info');
     @endphp
@@ -119,9 +122,9 @@
     <div class="alert {{ $alertClass }}">{{ $report->answer['text'] }}</div>
 
     <div class="ibox">
-        <div class="ibox-title"><h5>Period totals</h5></div>
+        <div class="ibox-title"><h5>Income and business for these dates · {{ $cid }}</h5></div>
         <div class="ibox-content">
-            <p class="text-muted">Paid income excludes today until the midnight job runs. Carry now: Left ${{ $report->carryNow['left'] }} / Right ${{ $report->carryNow['right'] }}.</p>
+            <p class="text-muted">These numbers are for {{ $cid }} and the dates selected above. ROI, binary, and referral are money already in the wallet. Left, Right, and Matched are package volume on {{ $cid }}'s tree, not cash. Today is not paid until midnight Malaysia time. Unmatched leftover now: Left ${{ $report->carryNow['left'] }} / Right ${{ $report->carryNow['right'] }}.</p>
             <div class="row text-center">
                 <div class="col-sm-4 m-b-md"><div class="font-bold">{{ $money($report->totals['roi']) }}</div><div class="text-muted">ROI paid</div></div>
                 <div class="col-sm-4 m-b-md"><div class="font-bold">{{ $money($report->totals['binary']) }}</div><div class="text-muted">Binary paid</div></div>
@@ -134,9 +137,9 @@
     </div>
 
     <div class="ibox">
-        <div class="ibox-title"><h5>Day-wise ledger</h5></div>
+        <div class="ibox-title"><h5>Day-wise ledger · {{ $cid }}</h5></div>
         <div class="ibox-content">
-            <p class="text-muted m-b-sm">Each line is one day. Read the columns like this:</p>
+            <p class="text-muted m-b-sm">Each line is one day for {{ $cid }}. Read the columns like this:</p>
             <ul class="text-muted m-b-md" style="padding-left:18px">
                 <li><strong>Left / Right</strong> — new business that came in on that day.</li>
                 <li><strong>Matched</strong> — how much left and right could pair for binary pay. Both sides must have business. If one side is $0.00, matched is $0.00 even if the other side is large.</li>
@@ -183,14 +186,14 @@
 
     @if($report->sources !== null)
         <div class="ibox">
-            <div class="ibox-title"><h5>Left / Right breakdown</h5></div>
+            <div class="ibox-title"><h5>Left / Right breakdown · {{ $cid }}</h5></div>
             <div class="ibox-content">
-                <p class="text-muted m-b-sm">This is the detail behind Left and Right in the ledger. Each row is one downline whose package was added to this customer.</p>
+                <p class="text-muted m-b-sm">This is the detail behind Left and Right in the ledger for {{ $cid }}. Each row is one downline whose package was added to {{ $cid }}.</p>
                 <ul class="text-muted m-b-md" style="padding-left:18px">
                     <li><strong>Activated date</strong> — when that downline paid and joined (time shown if saved).</li>
-                    <li><strong>Added to</strong> — this customer’s Left or Right, based on where that ID sits.</li>
+                    <li><strong>Added to</strong> — {{ $cid }}'s Left or Right, based on where that ID sits.</li>
                     <li><strong>Downline ID / Name</strong> — who joined.</li>
-                    <li><strong>Package amount</strong> — dollars added to that side (not “1 person”). People this customer sponsored appear here only if they also sit on this customer’s Left or Right.</li>
+                    <li><strong>Package amount</strong> — dollars added to that side (not “1 person”). People {{ $cid }} sponsored appear here only if they also sit on {{ $cid }}'s Left or Right.</li>
                 </ul>
                 <div class="table-responsive">
                     <table class="table table-striped">
@@ -213,7 +216,7 @@
                                 <td class="text-right">{{ $money($source->amount) }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="5">No Left or Right business in this date range.</td></tr>
+                            <tr><td colspan="5">No Left or Right business for {{ $cid }} in this date range.</td></tr>
                         @endforelse
                         </tbody>
                     </table>
@@ -225,14 +228,14 @@
 
     @if($report->referrals !== null)
         <div class="ibox">
-            <div class="ibox-title"><h5>Referral breakdown</h5></div>
+            <div class="ibox-title"><h5>Referral breakdown · {{ $cid }}</h5></div>
             <div class="ibox-content">
-                <p class="text-muted m-b-sm">This lists people who joined with this customer as <strong>sponsor</strong>. It is not Left/Right tree business. This customer does not get the full package; they get {{ $referralPercent }}% after the daily income run.</p>
+                <p class="text-muted m-b-sm">This lists people who joined with {{ $cid }} as <strong>sponsor</strong>. It is not Left/Right tree business. {{ $cid }} does not get the full package; they get {{ $referralPercent }}% after the daily income run.</p>
                 <ul class="text-muted m-b-md" style="padding-left:18px">
                     <li><strong>Activated date</strong> — when the referred person paid and joined (time shown if saved).</li>
-                    <li><strong>Referred ID / Name</strong> — who used this customer’s referral.</li>
-                    <li><strong>Package amount</strong> — that person’s package (not paid in full to this customer).</li>
-                    <li><strong>Referral ({{ $referralPercent }}%)</strong> — amount this customer should receive.</li>
+                    <li><strong>Referred ID / Name</strong> — who used {{ $cid }} as sponsor.</li>
+                    <li><strong>Package amount</strong> — that person's package (not paid in full to {{ $cid }}).</li>
+                    <li><strong>Referral ({{ $referralPercent }}%)</strong> — amount {{ $cid }} should receive.</li>
                     <li><strong>Pay status</strong> — already credited, or waiting for the midnight job.</li>
                 </ul>
                 <div class="table-responsive">
@@ -258,7 +261,7 @@
                                 <td>{{ $referral['status'] }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="6">No one joined with this customer as sponsor in this date range.</td></tr>
+                            <tr><td colspan="6">No one joined with {{ $cid }} as sponsor in this date range.</td></tr>
                         @endforelse
                         </tbody>
                     </table>
@@ -269,3 +272,27 @@
     @endif
 @endif
 @endsection
+
+@push('scripts')
+<script>
+(function ($) {
+    var $range = $('#verification-range');
+    var $wrap = $('#verification-custom-dates');
+    var $from = $('#verification-from');
+    var $to = $('#verification-to');
+
+    function syncCustomDates() {
+        var custom = $range.val() === 'custom';
+        $wrap.toggle(custom);
+        $from.prop('disabled', !custom);
+        $to.prop('disabled', !custom);
+        if (!custom) {
+            $from.val('');
+            $to.val('');
+        }
+    }
+
+    $range.on('change', syncCustomDates);
+})(jQuery);
+</script>
+@endpush

@@ -24,12 +24,15 @@ final class VerificationFilters
 
     public static function fromRequest(Request $request): self
     {
+        $range = self::pick($request->query('range'), self::RANGES, 'all');
+        $custom = $range === 'custom';
+
         return new self(
-            self::pick($request->query('range'), self::RANGES, 'all'),
+            $range,
             self::pick($request->query('focus'), self::FOCUSES, 'all'),
             self::pick($request->query('days'), self::DAYS, 'activity'),
-            self::dateOrNull($request->query('from')),
-            self::dateOrNull($request->query('to')),
+            $custom ? self::dateOrNull($request->query('from')) : null,
+            $custom ? self::dateOrNull($request->query('to')) : null,
         );
     }
 

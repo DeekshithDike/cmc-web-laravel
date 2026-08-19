@@ -44,6 +44,16 @@ class CustomerVerificationUnitTest extends TestCase
         $this->assertNull($invalid->to);
         $this->assertTrue($invalid->showsSources());
         $this->assertTrue($invalid->showsReferrals());
+
+        $todayIgnoresRange = VerificationFilters::fromRequest(Request::create('/admin/verification', 'GET', [
+            'range' => 'today',
+            'from' => '2026-08-01',
+            'to' => '2026-08-10',
+        ]));
+        $this->assertSame('today', $todayIgnoresRange->range);
+        $this->assertNull($todayIgnoresRange->from);
+        $this->assertNull($todayIgnoresRange->to);
+        $this->assertSame(['2026-08-19', '2026-08-19'], $todayIgnoresRange->period('2026-08-19', '2026-08-01'));
     }
 
     public function test_period_resolves_presets_and_swaps_inverted_custom_dates(): void
@@ -62,6 +72,25 @@ class CustomerVerificationUnitTest extends TestCase
 
         $week = new VerificationFilters('7d', 'all', 'activity', null, null);
         $this->assertSame(['2026-08-13', '2026-08-19'], $week->period($today, $created));
+
+        $sevenIgnoresDates = VerificationFilters::fromRequest(Request::create('/admin/verification', 'GET', [
+            'range' => '7d',
+            'from' => '2026-01-01',
+            'to' => '2026-01-31',
+        ]));
+        $this->assertNull($sevenIgnoresDates->from);
+        $this->assertNull($sevenIgnoresDates->to);
+        $this->assertSame(['2026-08-13', '2026-08-19'], $sevenIgnoresDates->period($today, $created));
+
+        $yesterdayIgnoresDates = VerificationFilters::fromRequest(Request::create('/admin/verification', 'GET', [
+            'range' => 'yesterday',
+            'from' => '2026-08-01',
+            'to' => '2026-08-10',
+        ]));
+        $this->assertSame(['2026-08-18', '2026-08-18'], $yesterdayIgnoresDates->period($today, $created));
+
+        $customEmpty = new VerificationFilters('custom', 'all', 'activity', null, null);
+        $this->assertSame(['2026-08-01', '2026-08-19'], $customEmpty->period($today, $created));
 
         $custom = new VerificationFilters('custom', 'roi', 'all', '2026-08-10', '2026-08-05');
         $this->assertSame(['2026-08-05', '2026-08-10'], $custom->period($today, $created));
@@ -96,7 +125,8 @@ class CustomerVerificationUnitTest extends TestCase
 
         $today = VerificationAnswer::make('all', 'today', true, true, true, $totals, 5, 10, 250, 50, 0);
         $this->assertSame('warning', $today['tone']);
-        $this->assertStringContainsString('not paid yet', $today['text']);
+        $this->assertStringContainsString('not been paid yet', $today['text']);
+        $this->assertStringContainsString('pays yesterday, not today', $today['text']);
 
         $missingRun = VerificationAnswer::make('all', 'yesterday', true, false, false, $totals, 5, 10, 250, 50, 0);
         $this->assertStringContainsString('has not been marked completed', $missingRun['text']);

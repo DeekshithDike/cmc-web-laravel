@@ -39,7 +39,7 @@ final class VerificationAnswer
         if ($range === 'today') {
             return [
                 'tone' => 'warning',
-                'text' => 'Today is not paid yet. The midnight Malaysia job pays yesterday. Today’s left/right below is stored business only — matching and ROI wait until tonight’s run. Do not re-run income from this page.',
+                'text' => 'Today has not been paid yet — that is normal. At midnight Malaysia time the system pays yesterday, not today. Left and Right below are only today’s stored business. Matching, ROI, binary, and referral for today wait until tonight’s job. If yesterday still needs paying, use Daily Paid Income. Do not run income from this page.',
             ];
         }
 
