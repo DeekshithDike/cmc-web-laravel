@@ -27,7 +27,7 @@ class DashboardController extends Controller
             $showExpiryWarning = $daysLeft >= 0 && $daysLeft <= $warningDays;
         }
 
-        $roi = $this->roiWallet((int) $user->id, $today);
+        $roi = $this->roiWallet((int) $user->id);
 
         return view('customer.dashboard', [
             'user' => $user,
@@ -39,21 +39,27 @@ class DashboardController extends Controller
             'rightBusinessTotal' => $volume['right_total'],
             'referralToday' => $this->referralDisplay((int) $user->id, $today),
             'referralTotal' => $this->referralDisplay((int) $user->id, null),
-            'roiToday' => $roi['today'],
+            'roiLastPaid' => $roi['last_paid'],
+            'roiLastPaidOn' => $roi['last_paid_on'],
             'roiTotal' => $roi['total'],
             'roiDays' => $roi['days'],
+            'openRegisterUrl' => route('customer.register.open'),
+            'openRegisterSponsoredUrl' => route('customer.register.open', [
+                'sponsor' => encrypt((string) $user->id),
+            ]),
         ]);
     }
 
     /**
-     * @return array{today: string, total: string, days: int}
+     * @return array{last_paid: string, last_paid_on: ?string, total: string, days: int}
      */
-    private function roiWallet(int $userId, string $today): array
+    private function roiWallet(int $userId): array
     {
-        $todayRoi = (float) (PaymentDetail::query()
+        $last = PaymentDetail::query()
             ->where('user_id', $userId)
-            ->whereDate('paid_on', $today)
-            ->value('roi_amount') ?? 0);
+            ->where('roi_amount', '>', 0)
+            ->orderByDesc('paid_on')
+            ->first(['roi_amount', 'paid_on']);
 
         $totals = PaymentDetail::query()
             ->where('user_id', $userId)
@@ -62,7 +68,8 @@ class DashboardController extends Controller
             ->first();
 
         return [
-            'today' => number_format($todayRoi, 2, '.', ''),
+            'last_paid' => number_format((float) ($last->roi_amount ?? 0), 2, '.', ''),
+            'last_paid_on' => $last?->paid_on ? IncomeCalendar::formatDate($last->paid_on) : null,
             'total' => number_format((float) ($totals->total_roi ?? 0), 2, '.', ''),
             'days' => (int) ($totals->roi_days ?? 0),
         ];

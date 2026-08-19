@@ -33,7 +33,7 @@ class AdminIncomeRunPopupTest extends TestCase
             ->assertSee("Run yesterday's income?", false)
             ->assertSee("Yes, run yesterday's income", false)
             ->assertSee('This credits wallets and cannot be undone from this screen', false)
-            ->assertSee('2026-08-18 (Tuesday)', false)
+            ->assertSee('18 Aug 2026 (Tuesday)', false)
             ->assertSee('Paid at each package\'s daily percent', false)
             ->assertSee('5% of matched left/right volume', false)
             ->assertSee('10% of that day\'s stored referral package volume', false)
@@ -61,7 +61,7 @@ class AdminIncomeRunPopupTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.income.daily'))
             ->assertOk()
-            ->assertSee('2026-08-15 (Saturday)', false)
+            ->assertSee('15 Aug 2026 (Saturday)', false)
             ->assertSee('Not paid', false)
             ->assertSee('Saturday is a weekend', false);
     }

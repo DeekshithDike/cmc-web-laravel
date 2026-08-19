@@ -15,10 +15,10 @@
             @forelse ($rows as $row)
                 <tr>
                     <td>#{{ $row->user_id }} {{ $row->user?->name ?? '' }}</td>
-                    <td>{{ $row->previous_expiry?->format('Y-m-d') }}</td>
-                    <td>{{ $row->new_expiry?->format('Y-m-d') }}</td>
+                    <td>{{ \App\Support\IncomeCalendar::formatDate($row->previous_expiry) }}</td>
+                    <td>{{ \App\Support\IncomeCalendar::formatDate($row->new_expiry) }}</td>
                     <td>${{ number_format((float) $row->amount, 2) }}</td>
-                    <td>{{ $row->created_at?->format('Y-m-d') }}</td>
+                    <td>{{ \App\Support\IncomeCalendar::formatWhen($row->created_at) }}</td>
                 </tr>
             @empty
                 <tr><td colspan="5">No renewals yet.</td></tr>

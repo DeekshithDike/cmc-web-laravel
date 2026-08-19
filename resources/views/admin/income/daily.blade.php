@@ -11,7 +11,7 @@
 <div class="ibox">
     <div class="ibox-title"><h5>Run Daily Income</h5></div>
     <div class="ibox-content">
-        <p class="m-b-sm">Calculates <strong>{{ $asOf }}</strong> (yesterday Malaysia time, 00:00–23:59). Same job as the {{ config('citymax.income.run_at') }} Malaysia cron. Already calculated days are skipped.</p>
+        <p class="m-b-sm">Calculates <strong>{{ \App\Support\IncomeCalendar::formatDate($asOf) }}</strong> (yesterday Malaysia time, 00:00–23:59). Same job as the {{ config('citymax.income.run_at') }} Malaysia cron. Already calculated days are skipped.</p>
         @if($alreadyDone)
             <p class="text-success">Already calculated: {{ $existing->processed }} members, ${{ number_format((float) $existing->total_paid, 2) }} ({{ $existing->triggered_by }}).</p>
         @endif
@@ -38,7 +38,7 @@
             <tbody>
             @forelse($rows as $row)
                 <tr>
-                    <td>{{ $row->paid_on?->format('Y-m-d') }}</td>
+                    <td>{{ \App\Support\IncomeCalendar::formatDate($row->paid_on) }}</td>
                     <td>#{{ $row->user_id }} {{ $row->user->name ?? '' }}</td>
                     <td>${{ number_format((float)$row->roi_amount, 2) }}</td>
                     <td>${{ number_format((float)$row->binary_amount, 2) }}</td>
@@ -65,10 +65,10 @@
                     <h4 class="modal-title" id="incomeRunTitle">Run yesterday's income?</h4>
                 </div>
                 <div class="modal-body">
-                    <p class="m-b-md">You are about to credit member wallets for <strong>{{ $asOf }}</strong> ({{ $asOfDay }}). That is yesterday in Malaysia time, the same job as the {{ config('citymax.income.run_at') }} Malaysia cron.</p>
+                    <p class="m-b-md">You are about to credit member wallets for <strong>{{ \App\Support\IncomeCalendar::formatDate($asOf) }}</strong> ({{ $asOfDay }}). That is yesterday in Malaysia time, the same job as the {{ config('citymax.income.run_at') }} Malaysia cron.</p>
                     <table class="table table-bordered table-condensed m-b-md">
                         <tbody>
-                        <tr><th style="width:35%">Income date</th><td>{{ $asOf }} ({{ $asOfDay }})</td></tr>
+                        <tr><th style="width:35%">Income date</th><td>{{ \App\Support\IncomeCalendar::formatDate($asOf) }} ({{ $asOfDay }})</td></tr>
                         <tr><th>Covers</th><td>Malaysia 00:00–23:59 for that day</td></tr>
                         <tr><th>Who is paid</th><td>Active paid members whose package is still valid on this date</td></tr>
                         <tr>

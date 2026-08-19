@@ -75,6 +75,8 @@ class SecurityAbuseAndIsolationTest extends TestCase
             'position' => 'left',
         ]))->assertOk()->assertSee('name="_token"', false);
 
+        $this->get(route('customer.register.open'))->assertOk()->assertSee('name="_token"', false);
+
         $this->actingAs($this->root)->get(route('customer.withdrawals.create'))
             ->assertOk()
             ->assertSee('name="_token"', false)

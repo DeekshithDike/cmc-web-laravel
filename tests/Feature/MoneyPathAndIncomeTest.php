@@ -375,7 +375,7 @@ class MoneyPathAndIncomeTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.income.daily'))
             ->assertOk()
-            ->assertSee('2026-08-13', false)
+            ->assertSee('13 Aug 2026', false)
             ->assertSee('Already calculated', false);
 
         $this->assertSame(1, DailyIncomeRun::query()->whereDate('as_of', '2026-08-13')->count());

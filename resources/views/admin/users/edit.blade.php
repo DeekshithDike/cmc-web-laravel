@@ -70,7 +70,7 @@
                     <dt>Wallet</dt>
                     <dd>${{ number_format((float) $user->wallet_balance, 2) }}</dd>
                     <dt>Expiry</dt>
-                    <dd>{{ $user->expiry_date?->format('Y-m-d') ?: '—' }}</dd>
+                    <dd>{{ \App\Support\IncomeCalendar::formatDate($user->expiry_date) }}</dd>
                     <dt>Status</dt>
                     <dd>{{ $user->is_active ? 'Active' : 'Inactive' }}</dd>
                 </dl>

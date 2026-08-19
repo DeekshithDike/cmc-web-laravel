@@ -77,6 +77,7 @@ class AllEndpointsAndUseCasesTest extends TestCase
         $this->get(route('admin.login'))->assertOk();
         $this->get(route('customer.login'))->assertOk();
         $this->get(route('customer.register'))->assertRedirect(route('landing'));
+        $this->get(route('customer.register.open'))->assertOk()->assertSee('Open join', false);
         $this->get(route('customer.register.special'))->assertRedirect(route('landing'));
         $this->get(route('customer.payment.success'))->assertOk()->assertSee('Registration successful', false);
         $this->get(route('customer.payment.cancel'))->assertOk()->assertSee('Signup again using the link', false);
@@ -123,6 +124,7 @@ class AllEndpointsAndUseCasesTest extends TestCase
             route('admin.users.edit', $this->root),
             route('admin.payments.index'),
             route('admin.income.daily'),
+            route('admin.verification.index'),
             route('admin.power.index'),
             route('admin.power.activate'),
             route('admin.withdrawals.index', 'pending'),

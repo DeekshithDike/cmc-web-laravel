@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\TreePosition;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Models\User;
@@ -52,20 +53,31 @@ class CustomerRegisterController extends Controller
             'position' => $position,
             'sponsorId' => $sponsorId,
             'powerId' => null,
+            'openJoin' => false,
             'formAction' => route('customer.register.save', absolute: false),
+            'heading' => 'Join '.config('citymax.name'),
+        ]);
+    }
+
+    public function openShow(Request $request): View
+    {
+        $sponsorId = $this->decryptOpenSponsor($request->query('sponsor'));
+
+        return view('customer.auth.register', [
+            'packages' => Package::query()->where('is_active', true)->orderBy('sort_order')->get(),
+            'placementId' => old('parent_id'),
+            'position' => old('position'),
+            'sponsorId' => old('sponsor_id', $sponsorId),
+            'powerId' => null,
+            'openJoin' => true,
+            'formAction' => route('customer.register.open.save', absolute: false),
             'heading' => 'Join '.config('citymax.name'),
         ]);
     }
 
     public function store(Request $request, MembershipService $membership, PaymentService $payments): RedirectResponse|JsonResponse
     {
-        $request->validate([
-            'name' => MemberRules::name(),
-            'email' => MemberRules::email(),
-            'phone' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'max:50'],
-            'package_id' => ['required', 'integer', 'exists:packages,id'],
-        ]);
+        $this->validateSignup($request);
 
         $invite = $this->resolvedInvite($request);
         if ($invite === null) {
@@ -77,6 +89,97 @@ class CustomerRegisterController extends Controller
             return $this->failCheckout('Registration requires a valid invite link.', 'landing');
         }
 
+        return $this->startSignupCheckout($request, $membership, $payments, $invite, 'invite');
+    }
+
+    public function openStore(Request $request, MembershipService $membership, PaymentService $payments): RedirectResponse|JsonResponse
+    {
+        $this->validateSignup($request, true);
+
+        try {
+            $parentId = (int) $request->input('parent_id');
+            $position = (string) $request->input('position');
+            $membership->assertOpenJoinPlacement($parentId, $position);
+            $sponsorId = $membership->resolveOpenJoinSponsor((int) $request->input('sponsor_id'), $parentId);
+        } catch (InvalidArgumentException $e) {
+            Log::warning('Open register rejected: '.$e->getMessage(), [
+                'email' => $request->input('email'),
+                'parent_id' => $request->input('parent_id'),
+                'position' => $request->input('position'),
+                'sponsor_id' => $request->input('sponsor_id'),
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->failCheckout($e->getMessage());
+        }
+
+        return $this->startSignupCheckout($request, $membership, $payments, [
+            'parent_id' => (int) $request->input('parent_id'),
+            'position' => (string) $request->input('position'),
+            'sponsor_id' => $sponsorId,
+        ]);
+    }
+
+    /**
+     * @return array{parent_id:int,position:string,sponsor_id:int}|null
+     */
+    private function resolvedInvite(Request $request): ?array
+    {
+        $invite = $request->session()->get('invite');
+        if (is_array($invite) && ! empty($invite['parent_id']) && in_array($invite['position'] ?? '', ['left', 'right'], true)) {
+            return [
+                'parent_id' => (int) $invite['parent_id'],
+                'position' => (string) $invite['position'],
+                'sponsor_id' => (int) ($invite['sponsor_id'] ?: $invite['parent_id']),
+            ];
+        }
+
+        $parentId = (int) $request->input('parent_id');
+        $position = (string) $request->input('position');
+        if (! $parentId || ! in_array($position, ['left', 'right'], true)) {
+            return null;
+        }
+
+        if (! User::query()->whereKey($parentId)->where('is_active', true)->exists()) {
+            return null;
+        }
+
+        return [
+            'parent_id' => $parentId,
+            'position' => $position,
+            'sponsor_id' => $parentId,
+        ];
+    }
+
+    private function validateSignup(Request $request, bool $openJoin = false): void
+    {
+        $rules = [
+            'name' => MemberRules::name(),
+            'email' => MemberRules::email(),
+            'phone' => ['nullable', 'string', 'max:20'],
+            'country' => ['nullable', 'string', 'max:50'],
+            'package_id' => ['required', 'integer', 'exists:packages,id'],
+        ];
+
+        if ($openJoin) {
+            $rules['parent_id'] = ['required', 'integer'];
+            $rules['position'] = ['required', 'in:left,right'];
+            $rules['sponsor_id'] = ['nullable', 'integer'];
+        }
+
+        $request->validate($rules);
+    }
+
+    /**
+     * @param  array{parent_id:int,position:string,sponsor_id:int}  $invite
+     */
+    private function startSignupCheckout(
+        Request $request,
+        MembershipService $membership,
+        PaymentService $payments,
+        array $invite,
+        ?string $forgetSessionKey = null,
+    ): RedirectResponse|JsonResponse {
         $package = Package::query()->whereKey((int) $request->input('package_id'))->where('is_active', true)->first();
         if (! $package) {
             Log::warning('Customer register rejected: package not found', [
@@ -127,38 +230,33 @@ class CustomerRegisterController extends Controller
         return $this->redirectToCheckout($payments, $result, $orderId, [
             'flow' => 'invite_register',
             'email' => $data['email'],
-        ], 'invite');
+        ], $forgetSessionKey);
     }
 
-    /**
-     * @return array{parent_id:int,position:string,sponsor_id:int}|null
-     */
-    private function resolvedInvite(Request $request): ?array
+    private function decryptOpenSponsor(mixed $value): ?int
     {
-        $invite = $request->session()->get('invite');
-        if (is_array($invite) && ! empty($invite['parent_id']) && in_array($invite['position'] ?? '', ['left', 'right'], true)) {
-            return [
-                'parent_id' => (int) $invite['parent_id'],
-                'position' => (string) $invite['position'],
-                'sponsor_id' => (int) ($invite['sponsor_id'] ?: $invite['parent_id']),
-            ];
-        }
-
-        $parentId = (int) $request->input('parent_id');
-        $position = (string) $request->input('position');
-        if (! $parentId || ! in_array($position, ['left', 'right'], true)) {
+        if (! is_string($value) || $value === '') {
             return null;
         }
 
-        if (! User::query()->whereKey($parentId)->where('is_active', true)->exists()) {
+        try {
+            $sponsorId = (int) decrypt($value);
+        } catch (Throwable) {
             return null;
         }
 
-        return [
-            'parent_id' => $parentId,
-            'position' => $position,
-            'sponsor_id' => $parentId,
-        ];
+        if ($sponsorId <= 0) {
+            return null;
+        }
+
+        $sponsor = User::query()
+            ->whereKey($sponsorId)
+            ->where('role', UserRole::Customer)
+            ->where('is_active', true)
+            ->where('is_power_id', false)
+            ->first();
+
+        return $sponsor?->id;
     }
 
     public function specialShow(Request $request): View|RedirectResponse
@@ -178,6 +276,7 @@ class CustomerRegisterController extends Controller
                 : (string) $power->position,
             'sponsorId' => $power->sponsor_id,
             'powerId' => $power->id,
+            'openJoin' => false,
             'formAction' => route('customer.register.special.save', absolute: false),
             'heading' => 'Activate Power ID',
         ]);

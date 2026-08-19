@@ -28,9 +28,10 @@
                         <td>{{ $user->email }}</td>
                         <td>{{ $user->package->name ?? '—' }}</td>
                         <td>${{ number_format((float)$user->wallet_balance, 2) }}</td>
-                        <td>{{ $user->expiry_date?->format('Y-m-d') }}</td>
+                        <td>{{ \App\Support\IncomeCalendar::formatDate($user->expiry_date) }}</td>
                         <td class="text-right">
                             @include('admin.partials.row-actions', ['actions' => [
+                                ['label' => 'Verify', 'url' => route('admin.verification.index', ['q' => $user->id]), 'icon' => 'fa-search'],
                                 ['label' => 'Edit', 'url' => route('admin.users.edit', $user), 'icon' => 'fa-pencil'],
                             ]])
                         </td>

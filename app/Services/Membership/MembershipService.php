@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Calc\CalcDispatcher;
 use App\Services\Business\BusinessVolumeService;
 use App\Services\Income\ReferralBonusService;
+use App\Support\PostgresIdSequences;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -30,7 +31,7 @@ class MembershipService
      */
     public function createActiveMember(array $data, bool $notifyCalc = true): User
     {
-        $user = DB::transaction(function () use ($data) {
+        $user = PostgresIdSequences::run(fn () => DB::transaction(function () use ($data) {
             $package = Package::query()->whereKey($data['package_id'])->where('is_active', true)->firstOrFail();
             $parent = User::query()->whereKey($data['parent_id'])->where('role', UserRole::Customer)->firstOrFail();
             $sponsor = User::query()->whereKey($data['sponsor_id'])->where('role', UserRole::Customer)->firstOrFail();
@@ -66,7 +67,7 @@ class MembershipService
             $user->plain_password = $password;
 
             return $user;
-        });
+        }));
 
         if ($notifyCalc) {
             $this->calc->placeMember($this->placeMemberPayload($user, 'NORMAL'));
@@ -85,9 +86,73 @@ class MembershipService
         $this->assertSlotFree($parentId, TreePosition::from($position));
     }
 
+    public function assertOpenJoinPlacement(int $parentId, string $position): void
+    {
+        $parent = User::query()->whereKey($parentId)->where('role', UserRole::Customer)->first();
+        if (! $parent) {
+            throw new InvalidArgumentException('Placement ID not found.');
+        }
+
+        if (! $parent->is_active && ! $parent->is_power_id) {
+            throw new InvalidArgumentException('Invalid placement ID.');
+        }
+
+        $this->assertSlotFree($parentId, TreePosition::from($position));
+    }
+
+    public function resolveOpenJoinSponsor(int $sponsorId, int $placementId): int
+    {
+        $placement = User::query()->whereKey($placementId)->where('role', UserRole::Customer)->first();
+        if (! $placement) {
+            throw new InvalidArgumentException('Placement ID not found.');
+        }
+
+        if ($sponsorId <= 0) {
+            if ($placement->is_active && ! $placement->is_power_id) {
+                return $placement->id;
+            }
+
+            throw new InvalidArgumentException('Sponsor ID is required.');
+        }
+
+        $sponsor = User::query()
+            ->whereKey($sponsorId)
+            ->where('role', UserRole::Customer)
+            ->where('is_active', true)
+            ->where('is_power_id', false)
+            ->first();
+
+        if (! $sponsor) {
+            throw new InvalidArgumentException('Sponsor must be an active member ID.');
+        }
+
+        if (! $this->isPlacementOrUpline($sponsor->id, $placementId)) {
+            throw new InvalidArgumentException('Sponsor must be the placement ID or an upline of the placement ID.');
+        }
+
+        return $sponsor->id;
+    }
+
+    private function isPlacementOrUpline(int $sponsorId, int $placementId): bool
+    {
+        $cursor = $placementId;
+        $guard = 0;
+
+        while ($cursor > 0 && $guard < 10000) {
+            $guard++;
+            if ($cursor === $sponsorId) {
+                return true;
+            }
+
+            $cursor = (int) (User::query()->whereKey($cursor)->value('parent_id') ?? 0);
+        }
+
+        return false;
+    }
+
     public function createPowerId(int $parentId, int $sponsorId, string $position, bool $notifyCalc = true): User
     {
-        $user = DB::transaction(function () use ($parentId, $sponsorId, $position) {
+        $user = PostgresIdSequences::run(fn () => DB::transaction(function () use ($parentId, $sponsorId, $position) {
             $parent = User::query()->whereKey($parentId)->where('role', UserRole::Customer)->firstOrFail();
             $sponsor = User::query()->whereKey($sponsorId)->where('role', UserRole::Customer)->firstOrFail();
             $pos = TreePosition::from($position);
@@ -111,7 +176,7 @@ class MembershipService
             $this->attachToTree($user, $parent, $pos);
 
             return $user;
-        });
+        }));
 
         if ($notifyCalc) {
             $this->calc->placeMember($this->placeMemberPayload($user, 'DUMMY'));

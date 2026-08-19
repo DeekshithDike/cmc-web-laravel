@@ -31,21 +31,27 @@ class CustomerDashboardRoiTest extends TestCase
             ->assertSee('ROI wallet income', false)
             ->assertSee('0 days paid', false)
             ->assertSee('$0.00', false)
-            ->assertSee('Weekdays with ROI', false);
+            ->assertSee('Last paid ROI', false)
+            ->assertSee('No ROI credited yet', false)
+            ->assertSee('Total ROI', false)
+            ->assertSee('All ROI credited so far', false)
+            ->assertSee('Paid days', false)
+            ->assertSee('Weekdays ROI was paid', false);
     }
 
-    public function test_dashboard_shows_today_total_and_days_for_this_customer_only(): void
+    public function test_dashboard_shows_last_paid_roi_total_and_days_for_this_customer_only(): void
     {
-        $today = IncomeCalendar::today();
         $yesterday = now(IncomeCalendar::timezone())->subDay()->toDateString();
+        $twoDaysAgo = now(IncomeCalendar::timezone())->subDays(2)->toDateString();
+        $threeDaysAgo = now(IncomeCalendar::timezone())->subDays(3)->toDateString();
 
         PaymentDetail::query()->create([
             'user_id' => $this->root->id,
-            'roi_amount' => '1.00',
+            'roi_amount' => '1.25',
             'binary_amount' => '0.00',
             'referral_amount' => '0.00',
-            'total_amount' => '1.00',
-            'paid_on' => $yesterday,
+            'total_amount' => '1.25',
+            'paid_on' => $twoDaysAgo,
         ]);
         PaymentDetail::query()->create([
             'user_id' => $this->root->id,
@@ -53,7 +59,7 @@ class CustomerDashboardRoiTest extends TestCase
             'binary_amount' => '0.00',
             'referral_amount' => '0.00',
             'total_amount' => '1.00',
-            'paid_on' => $today,
+            'paid_on' => $threeDaysAgo,
         ]);
         PaymentDetail::query()->create([
             'user_id' => $this->root->id,
@@ -61,7 +67,7 @@ class CustomerDashboardRoiTest extends TestCase
             'binary_amount' => '5.00',
             'referral_amount' => '0.00',
             'total_amount' => '5.00',
-            'paid_on' => now(IncomeCalendar::timezone())->subDays(2)->toDateString(),
+            'paid_on' => $yesterday,
         ]);
 
         $other = User::query()->create([
@@ -81,20 +87,20 @@ class CustomerDashboardRoiTest extends TestCase
             'binary_amount' => '0.00',
             'referral_amount' => '0.00',
             'total_amount' => '99.00',
-            'paid_on' => $today,
+            'paid_on' => $yesterday,
         ]);
 
-        $html = $this->actingAs($this->root)
+        $this->actingAs($this->root)
             ->get(route('customer.dashboard'))
             ->assertOk()
             ->assertSee('ROI wallet income', false)
+            ->assertSee('Last paid ROI', false)
+            ->assertSee('Paid days', false)
             ->assertSee('2 days paid', false)
-            ->assertSee('$1.00', false)
-            ->assertSee('$2.00', false)
+            ->assertSee('$1.25', false)
+            ->assertSee('Credited on '.IncomeCalendar::formatDate($twoDaysAgo), false)
+            ->assertSee('$2.25', false)
             ->assertDontSee('$99.00', false)
-            ->getContent();
-
-        $this->assertStringContainsString('Total ROI', $html);
-        $this->assertStringContainsString('Today', $html);
+            ->assertDontSee('No ROI credited yet', false);
     }
 }

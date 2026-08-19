@@ -19,7 +19,7 @@
                     <td>{{ $user->id }}</td>
                     <td>{{ $user->name }}</td>
                     <td>{{ $user->package->name ?? '—' }}</td>
-                    <td>{{ $user->expiry_date?->format('Y-m-d') }} @if(!is_null($days) && $days>=0) ({{ $days }}d) @endif</td>
+                    <td>{{ \App\Support\IncomeCalendar::formatDate($user->expiry_date) }} @if(!is_null($days) && $days>=0) ({{ $days }}d) @endif</td>
                     <td>
                         @if(!is_null($days) && $days <= $warningDays)
                         <form method="POST" action="{{ route('admin.renewals.renew', $user->id) }}">@csrf

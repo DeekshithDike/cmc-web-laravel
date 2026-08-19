@@ -16,7 +16,7 @@
                 <tr>
                     <td>{{ $user->id }}</td>
                     <td>{{ $user->name }}</td>
-                    <td>{{ $user->expiry_date?->format('Y-m-d') }}</td>
+                    <td>{{ \App\Support\IncomeCalendar::formatDate($user->expiry_date) }}</td>
                 </tr>
             @empty
                 <tr><td colspan="3">No expired members.</td></tr>

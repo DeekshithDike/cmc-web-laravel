@@ -43,6 +43,9 @@
                 <li class="{{ request()->routeIs('admin.income.daily') ? 'active' : '' }}">
                     <a href="{{ route('admin.income.daily') }}"><i class="fa fa-money"></i> <span class="nav-label">Daily Paid Income</span></a>
                 </li>
+                <li class="{{ request()->routeIs('admin.verification.index') ? 'active' : '' }}">
+                    <a href="{{ route('admin.verification.index') }}"><i class="fa fa-search"></i> <span class="nav-label">Customer Verification</span></a>
+                </li>
                 <li class="{{ request()->routeIs('admin.power.index') ? 'active' : '' }}">
                     <a href="{{ route('admin.power.index') }}"><i class="fa fa-lock"></i> <span class="nav-label">Power ID</span></a>
                 </li>

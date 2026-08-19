@@ -6,6 +6,7 @@ use App\Contracts\PaymentGatewayInterface;
 use App\Enums\PaymentProvider;
 use App\Models\PaymentTransaction;
 use App\Models\User;
+use App\Support\PostgresIdSequences;
 use Illuminate\Http\Request;
 
 class ManualPaymentGateway implements PaymentGatewayInterface
@@ -17,7 +18,7 @@ class ManualPaymentGateway implements PaymentGatewayInterface
 
     public function initiate(?User $user, float $amount, array $meta = []): array
     {
-        $transaction = PaymentTransaction::query()->create([
+        $transaction = PostgresIdSequences::run(fn () => PaymentTransaction::query()->create([
             'user_id' => $user?->id,
             'package_id' => $meta['package_id'] ?? $user?->package_id,
             'provider' => PaymentProvider::Manual,
@@ -26,7 +27,7 @@ class ManualPaymentGateway implements PaymentGatewayInterface
             'currency' => strtoupper($meta['currency'] ?? 'USD'),
             'status' => 'pending',
             'meta' => $meta,
-        ]);
+        ]));
 
         return [
             'transaction' => $transaction,

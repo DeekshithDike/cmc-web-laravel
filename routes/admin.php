@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\PowerIdController;
 use App\Http\Controllers\Admin\RenewalController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\Admin\WithdrawalController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,8 @@ Route::middleware(['auth:admin', 'admin'])->prefix('admin')->name('admin.')->gro
     Route::post('/income/daily/run', [IncomeController::class, 'run'])
         ->middleware('throttle:income-run')
         ->name('income.daily.run');
+
+    Route::get('/verification', [VerificationController::class, 'index'])->name('verification.index');
 
     Route::get('/power-ids', [PowerIdController::class, 'index'])->name('power.index');
     Route::post('/power-ids', [PowerIdController::class, 'store'])->name('power.store');

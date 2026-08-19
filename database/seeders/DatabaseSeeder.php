@@ -7,6 +7,7 @@ use App\Enums\UserStatus;
 use App\Models\BinaryTree;
 use App\Models\Package;
 use App\Models\User;
+use App\Support\PostgresIdSequences;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -156,6 +157,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->bumpUsersSequence($customerId);
+        PostgresIdSequences::sync();
     }
 
     private function bumpUsersSequence(int $lastId): void

@@ -30,7 +30,7 @@
                     <td>${{ number_format((float)$item->payable_amount, 2) }}</td>
                     <td class="text-break">{{ $item->wallet_address }}<br><small class="text-muted">{{ \App\Support\UsdtWalletAddress::label(\App\Support\UsdtWalletAddress::network((string) $item->wallet_address) ?? ($item->meta['network'] ?? null)) }}</small></td>
                     <td>{{ $item->payout_provider ?? '—' }}@if($item->payout_ref)<br><small class="text-muted">{{ $item->payout_ref }}</small>@endif</td>
-                    <td>{{ $item->created_at?->format('Y-m-d H:i') }}</td>
+                    <td>{{ \App\Support\IncomeCalendar::formatWhen($item->created_at) }}</td>
                     @if($status->value === 'pending')
                     @php
                         $networkLabel = \App\Support\UsdtWalletAddress::label(
@@ -50,7 +50,7 @@
                             data-payable="${{ number_format((float)$item->payable_amount, 2) }}"
                             data-wallet="{{ $item->wallet_address }}"
                             data-network="{{ $networkLabel }}"
-                            data-date="{{ $item->created_at?->format('Y-m-d H:i') }}"
+                            data-date="{{ \App\Support\IncomeCalendar::formatWhen($item->created_at) }}"
                         >Pay Now</button>
                         <button
                             type="button"
@@ -64,7 +64,7 @@
                             data-payable="${{ number_format((float)$item->payable_amount, 2) }}"
                             data-wallet="{{ $item->wallet_address }}"
                             data-network="{{ $networkLabel }}"
-                            data-date="{{ $item->created_at?->format('Y-m-d H:i') }}"
+                            data-date="{{ \App\Support\IncomeCalendar::formatWhen($item->created_at) }}"
                         >Decline</button>
                     </td>
                     @endif

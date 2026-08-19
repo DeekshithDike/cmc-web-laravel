@@ -26,6 +26,11 @@ Route::get('/customer/register', [\App\Http\Controllers\Auth\CustomerRegisterCon
 Route::post('/customer/register', [\App\Http\Controllers\Auth\CustomerRegisterController::class, 'store'])
     ->middleware('throttle:register')
     ->name('customer.register.save');
+Route::get('/customer/register/open', [\App\Http\Controllers\Auth\CustomerRegisterController::class, 'openShow'])
+    ->name('customer.register.open');
+Route::post('/customer/register/open', [\App\Http\Controllers\Auth\CustomerRegisterController::class, 'openStore'])
+    ->middleware('throttle:register')
+    ->name('customer.register.open.save');
 Route::get('/customer/register/special/user', [\App\Http\Controllers\Auth\CustomerRegisterController::class, 'specialShow'])
     ->name('customer.register.special');
 Route::post('/customer/register/special/user', [\App\Http\Controllers\Auth\CustomerRegisterController::class, 'specialStore'])

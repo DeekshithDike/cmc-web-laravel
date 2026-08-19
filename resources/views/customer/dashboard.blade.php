@@ -98,17 +98,19 @@
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div class="cmc-roi-metric p-4">
-            <p class="text-[11px] text-muted uppercase tracking-wide">Today</p>
-            <p class="text-2xl sm:text-3xl font-bold text-heading tracking-tight mt-1">${{ number_format((float) $roiToday, 2) }}</p>
+            <p class="text-[11px] text-muted uppercase tracking-wide">Last paid ROI</p>
+            <p class="text-2xl sm:text-3xl font-bold text-heading tracking-tight mt-1">${{ number_format((float) $roiLastPaid, 2) }}</p>
+            <p class="text-xs text-muted mt-1">{{ $roiLastPaidOn ? 'Credited on '.$roiLastPaidOn : 'No ROI credited yet' }}</p>
         </div>
         <div class="cmc-roi-metric p-4">
             <p class="text-[11px] text-muted uppercase tracking-wide">Total ROI</p>
             <p class="text-2xl sm:text-3xl font-bold text-heading tracking-tight mt-1">${{ number_format((float) $roiTotal, 2) }}</p>
+            <p class="text-xs text-muted mt-1">All ROI credited so far</p>
         </div>
         <div class="cmc-roi-metric p-4">
-            <p class="text-[11px] text-muted uppercase tracking-wide">Days</p>
+            <p class="text-[11px] text-muted uppercase tracking-wide">Paid days</p>
             <p class="text-2xl sm:text-3xl font-bold text-heading tracking-tight mt-1">{{ $roiDays }}</p>
-            <p class="text-xs text-muted mt-1">Weekdays with ROI</p>
+            <p class="text-xs text-muted mt-1">Weekdays ROI was paid</p>
         </div>
     </div>
 </section>
@@ -133,6 +135,36 @@
     </div>
     @endforeach
 </div>
+
+<section class="cmc-panel mb-6">
+    <div class="cmc-panel-head">
+        <span class="cmc-stat-icon"><i class="ph ph-link"></i></span>
+        <div>
+            <h2 class="text-base font-semibold text-heading m-0">Share registration link</h2>
+            <p class="text-xs text-muted m-0">New members enter placement ID. Sponsor can be included or left blank.</p>
+        </div>
+    </div>
+    <div class="p-4 space-y-3">
+        <div>
+            <p class="text-xs font-medium text-text-secondary mb-1.5">Without sponsor</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input id="open-register-url" type="text" readonly value="{{ $openRegisterUrl }}" class="flex-1 h-10 px-3 rounded-xl bg-subtle border border-border text-xs text-text">
+                <button type="button" data-copy="open-register-url" class="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
+                    <i class="ph ph-copy"></i> Copy
+                </button>
+            </div>
+        </div>
+        <div>
+            <p class="text-xs font-medium text-text-secondary mb-1.5">With your sponsor ID</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input id="open-register-sponsored-url" type="text" readonly value="{{ $openRegisterSponsoredUrl }}" class="flex-1 h-10 px-3 rounded-xl bg-subtle border border-border text-xs text-text">
+                <button type="button" data-copy="open-register-sponsored-url" class="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
+                    <i class="ph ph-copy"></i> Copy
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
 
 <section class="cmc-panel">
     <div class="cmc-panel-head">
@@ -196,6 +228,25 @@
     }
     tick();
     setInterval(tick, 1000);
+})();
+
+(function () {
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const input = document.getElementById(btn.getAttribute('data-copy') || '');
+            if (!input) return;
+            const value = input.value;
+            try {
+                await navigator.clipboard.writeText(value);
+            } catch (err) {
+                input.select();
+                document.execCommand('copy');
+            }
+            const label = btn.innerHTML;
+            btn.innerHTML = '<i class="ph ph-check"></i> Copied';
+            setTimeout(() => { btn.innerHTML = label; }, 1500);
+        });
+    });
 })();
 </script>
 @endpush

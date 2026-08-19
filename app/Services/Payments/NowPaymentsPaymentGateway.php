@@ -7,6 +7,7 @@ use App\Enums\PaymentProvider;
 use App\Models\PaymentTransaction;
 use App\Models\User;
 use App\Services\Payments\NowPayments\NowPaymentsClient;
+use App\Support\PostgresIdSequences;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
         $orderId = (string) ($meta['order_id'] ?? ('CMC-'.($user?->id ?? 'INV').'-'.uniqid()));
         $currency = strtoupper($meta['currency'] ?? config('payments.nowpayments.price_currency'));
 
-        $transaction = PaymentTransaction::query()->create([
+        $transaction = PostgresIdSequences::run(fn () => PaymentTransaction::query()->create([
             'user_id' => $user?->id,
             'package_id' => $meta['package_id'] ?? $user?->package_id,
             'provider' => PaymentProvider::NowPayments,
@@ -45,7 +46,7 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
             'currency' => $currency,
             'status' => 'pending',
             'meta' => array_merge($meta, ['order_id' => $orderId]),
-        ]);
+        ]));
 
         if (! $this->client->configured()) {
             if (! PaymentEnvironment::allowsStub()) {

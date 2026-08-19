@@ -10,6 +10,17 @@
   if (flash) flash.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (!form) return;
 
+  const digitsOnly = (event) => {
+    const input = event.target;
+    const cleaned = String(input.value || '').replace(/\D+/g, '');
+    if (input.value !== cleaned) input.value = cleaned;
+  };
+  form.querySelectorAll('input[name="parent_id"], input[name="sponsor_id"]').forEach((input) => {
+    if (input.type === 'hidden') return;
+    input.addEventListener('input', digitsOnly);
+    input.addEventListener('blur', digitsOnly);
+  });
+
   const setBusy = (busy, label) => {
     if (!btn) return;
     btn.disabled = busy;
