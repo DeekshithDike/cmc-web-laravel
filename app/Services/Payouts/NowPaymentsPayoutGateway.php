@@ -82,19 +82,26 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
             $ipnUrl = route('webhooks.payouts.handle', ['provider' => PaymentProvider::NowPayments->value]);
             $cryptoAmount = round($amount, 6);
             $fiatAmount = round($amount, 2);
-            $response = $this->client->createPayout([
-                [
-                    'address' => $withdrawal->wallet_address,
-                    'currency' => $currency,
-                    'amount' => $cryptoAmount,
-                    'fiat_amount' => $fiatAmount,
-                    'fiat_currency' => $fiatCurrency,
-                    'ipn_callback_url' => $ipnUrl,
-                    'extra_id' => (string) $withdrawal->id,
-                    'unique_external_id' => 'CMC-WD-'.$withdrawal->id,
-                    'payout_description' => 'City Max Crypto withdrawal #'.$withdrawal->id,
-                ],
-            ], $ipnUrl);
+            $externalId = 'CMC-WD-'.$withdrawal->id;
+            $payoutItem = [
+                'address' => $withdrawal->wallet_address,
+                'currency' => $currency,
+                'amount' => $cryptoAmount,
+                'fiat_amount' => $fiatAmount,
+                'fiat_currency' => $fiatCurrency,
+                'ipn_callback_url' => $ipnUrl,
+                'unique_external_id' => $externalId,
+                'payout_description' => 'City Max Crypto withdrawal #'.$withdrawal->id,
+            ];
+            // extra_id is a blockchain memo/destination tag (XRP, XLM, TON, …).
+            // USDT TRC-20 / BEP-20 do not use it; sending our withdrawal id is rejected as
+            // "Invalid payout extra ID: USDTBSC <address> <id>".
+            $memo = trim((string) ($meta['extra_id'] ?? $withdrawal->meta['extra_id'] ?? ''));
+            if ($memo !== '') {
+                $payoutItem['extra_id'] = $memo;
+            }
+
+            $response = $this->client->createPayout([$payoutItem], $ipnUrl);
 
             $batchId = (string) ($response['id'] ?? '');
             $item = $response['withdrawals'][0] ?? [];
@@ -131,6 +138,7 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
             $withdrawal->meta = array_merge($withdrawal->meta ?? [], [
                 'currency' => $currency,
                 'batch_id' => $batchId,
+                'unique_external_id' => $externalId,
                 'payout_response' => $response,
             ], $verifyMeta);
             $withdrawal->save();
@@ -186,6 +194,7 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
     {
         $id = (string) ($request->input('id') ?? '');
         $batchId = (string) ($request->input('batch_withdrawal_id') ?? '');
+        $externalId = (string) ($request->input('unique_external_id') ?? '');
         $extraId = (string) ($request->input('extra_id') ?? '');
 
         $query = Withdrawal::query()->where('payout_provider', PaymentProvider::NowPayments->value);
@@ -201,6 +210,19 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
             $found = (clone $query)->where('meta->batch_id', $batchId)->first();
             if ($found) {
                 return $found;
+            }
+        }
+
+        if ($externalId !== '') {
+            $found = (clone $query)->where('meta->unique_external_id', $externalId)->first();
+            if ($found) {
+                return $found;
+            }
+            if (preg_match('/^CMC-WD-(\d+)$/', $externalId, $matches) === 1) {
+                $found = (clone $query)->whereKey((int) $matches[1])->first();
+                if ($found) {
+                    return $found;
+                }
             }
         }
 

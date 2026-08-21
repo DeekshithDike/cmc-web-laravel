@@ -617,12 +617,16 @@ class PaymentGatewayScenariosTest extends TestCase
             'payout_ref' => 'wd-item-9',
             'payout_provider' => 'nowpayments',
         ]);
-        Http::assertSent(function ($request) {
+        Http::assertSent(function ($request) use ($wd) {
             if (! str_contains($request->url(), '/payout') || str_contains($request->url(), 'validate') || str_contains($request->url(), 'verify')) {
                 return false;
             }
 
-            return ($request->data()['withdrawals'][0]['currency'] ?? null) === 'usdtbsc';
+            $item = $request->data()['withdrawals'][0] ?? [];
+
+            return ($item['currency'] ?? null) === 'usdtbsc'
+                && ($item['unique_external_id'] ?? null) === 'CMC-WD-'.$wd->id
+                && ! array_key_exists('extra_id', $item);
         });
 
         $this->postSignedPayoutIpn([
