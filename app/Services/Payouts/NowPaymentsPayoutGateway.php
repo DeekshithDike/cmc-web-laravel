@@ -82,7 +82,8 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
             $ipnUrl = route('webhooks.payouts.handle', ['provider' => PaymentProvider::NowPayments->value]);
             $cryptoAmount = round($amount, 6);
             $fiatAmount = round($amount, 2);
-            $externalId = 'CMC-WD-'.$withdrawal->id;
+            // NOWPayments rejects reused unique_external_id even after a failed payout.
+            $externalId = 'CMC-WD-'.$withdrawal->id.'-'.str_replace('.', '', uniqid('', true));
             $payoutItem = [
                 'address' => $withdrawal->wallet_address,
                 'currency' => $currency,
@@ -218,7 +219,7 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
             if ($found) {
                 return $found;
             }
-            if (preg_match('/^CMC-WD-(\d+)$/', $externalId, $matches) === 1) {
+            if (preg_match('/^CMC-WD-(\d+)/', $externalId, $matches) === 1) {
                 $found = (clone $query)->whereKey((int) $matches[1])->first();
                 if ($found) {
                     return $found;

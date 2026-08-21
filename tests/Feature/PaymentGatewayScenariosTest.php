@@ -624,8 +624,10 @@ class PaymentGatewayScenariosTest extends TestCase
 
             $item = $request->data()['withdrawals'][0] ?? [];
 
+            $externalId = (string) ($item['unique_external_id'] ?? '');
+
             return ($item['currency'] ?? null) === 'usdtbsc'
-                && ($item['unique_external_id'] ?? null) === 'CMC-WD-'.$wd->id
+                && str_starts_with($externalId, 'CMC-WD-'.$wd->id.'-')
                 && ! array_key_exists('extra_id', $item);
         });
 
