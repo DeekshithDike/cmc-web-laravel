@@ -3,6 +3,7 @@
 namespace App\Services\Payments\NowPayments;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -14,6 +15,7 @@ use RuntimeException;
  * Docs: https://documenter.getpostman.com/view/7907941/2s93JusNJt
  * Receive: POST /invoice + IPN (x-nowpayments-sig HMAC-SHA512)
  * Send:    POST /auth → JWT, POST /payout, POST /payout/{id}/verify (2FA)
+ * Status:  GET /payout/{payout_id} (API key only), GET /payout?batch_id= (list)
  */
 class NowPaymentsClient
 {
@@ -91,6 +93,43 @@ class NowPaymentsClient
             ->throw();
 
         return $this->decodeOkOrJson($response->body(), $response->json());
+    }
+
+    /**
+     * GET /v1/payout/{payout_id} — API key only (no JWT).
+     * payout_id is the numeric payout item id from create-payout withdrawals[].id.
+     */
+    public function getPayoutStatus(string $payoutId): array
+    {
+        $payoutId = trim($payoutId);
+        if (! ctype_digit($payoutId)) {
+            throw new RuntimeException('NOWPayments payout id must be numeric.');
+        }
+
+        $response = $this->request()->get($this->url('/payout/'.$payoutId));
+
+        return $this->decodePayoutLookup($response, 'payout status');
+    }
+
+    /**
+     * GET /v1/payout?batch_id=&status=&limit=&page= — API key only.
+     *
+     * @param  array<string, scalar|null>  $query
+     * @return array<string, mixed>
+     */
+    public function listPayouts(array $query = []): array
+    {
+        $filtered = [];
+        foreach ($query as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $filtered[$key] = $value;
+        }
+
+        $response = $this->request()->get($this->url('/payout'), $filtered);
+
+        return $this->decodePayoutLookup($response, 'payout list');
     }
 
     public function verifyIpnSignature(?string $rawBody, ?string $signature): bool
@@ -184,6 +223,34 @@ class NowPaymentsClient
     private function url(string $path): string
     {
         return rtrim((string) config('payments.nowpayments.base_url'), '/').'/'.ltrim($path, '/');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodePayoutLookup(Response $response, string $what): array
+    {
+        $json = $response->json();
+        $code = $response->status();
+        $message = is_array($json) ? trim((string) ($json['message'] ?? $json['error'] ?? '')) : '';
+        $apiCode = is_array($json) ? (int) ($json['statusCode'] ?? 0) : 0;
+
+        if ($code === 404 || $apiCode === 404) {
+            throw new RuntimeException('NOWPayments '.$what.' was not found.');
+        }
+        if ($code === 401 || $code === 403 || $apiCode === 401 || $apiCode === 403) {
+            throw new RuntimeException('NOWPayments rejected the API key for '.$what.'.');
+        }
+        if ($code >= 400 || (is_array($json) && ($json['status'] ?? null) === false)) {
+            throw new RuntimeException(
+                'NOWPayments '.$what.' failed'.($message !== '' ? ': '.$message : ' (HTTP '.$code.').')
+            );
+        }
+        if (! is_array($json)) {
+            throw new RuntimeException('NOWPayments '.$what.' did not return JSON.');
+        }
+
+        return $json;
     }
 
     /**

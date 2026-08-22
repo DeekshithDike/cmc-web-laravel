@@ -114,6 +114,9 @@ class SecurityAbuseAndIsolationTest extends TestCase
         $this->actingAs($this->root)
             ->post(route('admin.withdrawals.complete', $wd))
             ->assertRedirect(route('admin.login'));
+        $this->actingAs($this->root)
+            ->post(route('admin.withdrawals.sync-processing'))
+            ->assertRedirect(route('admin.login'));
 
         $this->assertSame(WithdrawalStatus::Pending, $wd->fresh()->status);
     }

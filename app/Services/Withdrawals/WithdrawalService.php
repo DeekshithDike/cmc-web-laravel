@@ -7,10 +7,13 @@ use App\Enums\WithdrawalStatus;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Support\UsdtWalletAddress;
+use App\Services\Payouts\NowPaymentsPayoutGateway;
 use App\Services\Payouts\PayoutGatewayManager;
 use App\Services\Wallet\WalletService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 class WithdrawalService
 {
@@ -83,7 +86,7 @@ class WithdrawalService
                 throw new InvalidArgumentException('Only pending withdrawals can be declined.');
             }
 
-            $refund = max((float) $locked->amount - (float) $locked->fee, 0);
+            $refund = max((float) $locked->amount, 0);
             $this->wallet->credit($locked->user, $refund, 'withdrawal_declined');
 
             $locked->status = WithdrawalStatus::Declined;
@@ -112,12 +115,79 @@ class WithdrawalService
             ]));
 
             if ($confirmed->status === WithdrawalStatus::Declined) {
-                $refund = max((float) $confirmed->amount - (float) $confirmed->fee, 0);
+                $refund = max((float) $confirmed->amount, 0);
                 $this->wallet->credit($confirmed->user, $refund, 'withdrawal_payout_failed');
             }
 
             return $confirmed;
         });
+    }
+
+    /**
+     * Backup for missed payout IPNs. Reuses applyPayoutWebhook so webhook + sync cannot double-pay or double-refund.
+     *
+     * @return array{checked: int, completed: int, declined: int, unchanged: int, skipped: int, errors: list<string>}
+     */
+    public function syncProcessingPayouts(): array
+    {
+        $gateway = $this->payouts->driver(PaymentProvider::NowPayments);
+        if (! $gateway instanceof NowPaymentsPayoutGateway) {
+            throw new InvalidArgumentException('NOWPayments payout driver is unavailable.');
+        }
+
+        $summary = [
+            'checked' => 0,
+            'completed' => 0,
+            'declined' => 0,
+            'unchanged' => 0,
+            'skipped' => 0,
+            'errors' => [],
+        ];
+
+        $rows = Withdrawal::query()
+            ->where('status', WithdrawalStatus::Processing)
+            ->orderBy('id')
+            ->get();
+
+        foreach ($rows as $withdrawal) {
+            $summary['checked']++;
+            $provider = (string) ($withdrawal->payout_provider ?? '');
+            if ($provider !== PaymentProvider::NowPayments->value || ! filled($withdrawal->payout_ref)) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            try {
+                $payload = $gateway->fetchPayoutStatus($withdrawal);
+                $status = $gateway->mapPayloadStatus($payload, (string) $withdrawal->payout_ref);
+                if ($status === WithdrawalStatus::Processing->value) {
+                    $summary['unchanged']++;
+                    continue;
+                }
+
+                $updated = $this->applyPayoutWebhook($withdrawal, $status, [
+                    'provider_ref' => $withdrawal->payout_ref,
+                    'payout_status_sync' => $payload,
+                ]);
+
+                if ($updated->status === WithdrawalStatus::Completed) {
+                    $summary['completed']++;
+                } elseif ($updated->status === WithdrawalStatus::Declined) {
+                    $summary['declined']++;
+                } else {
+                    $summary['unchanged']++;
+                }
+            } catch (Throwable $e) {
+                $summary['errors'][] = 'Withdrawal #'.$withdrawal->id.': '.$e->getMessage();
+                Log::warning('Payout status sync failed', [
+                    'withdrawal_id' => $withdrawal->id,
+                    'payout_ref' => $withdrawal->payout_ref,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $summary;
     }
 
     private function isPending(Withdrawal $withdrawal): bool

@@ -58,6 +58,8 @@ Route::middleware(['auth:admin', 'admin'])->prefix('admin')->name('admin.')->gro
     Route::post('/withdrawals/{withdrawal}/decline', [WithdrawalController::class, 'decline'])
         ->whereNumber('withdrawal')
         ->name('withdrawals.decline');
+    Route::post('/withdrawals/sync-processing', [WithdrawalController::class, 'syncProcessing'])
+        ->name('withdrawals.sync-processing');
     Route::get('/withdrawals-export/completed', [ExportController::class, 'completedWithdrawals'])
         ->name('withdrawals.export.completed');
 

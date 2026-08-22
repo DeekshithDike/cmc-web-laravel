@@ -236,13 +236,128 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
 
     public function webhookStatus(Request $request): string
     {
-        $status = strtoupper((string) ($request->input('status') ?? ''));
+        return $this->mapPayloadStatus($request->all(), (string) ($request->input('id') ?? ''));
+    }
 
-        return match ($status) {
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function mapPayloadStatus(array $payload, string $payoutRef = ''): string
+    {
+        $status = '';
+        $items = $payload['withdrawals'] ?? null;
+        if (is_array($items) && $items !== []) {
+            $match = null;
+            if ($payoutRef !== '') {
+                foreach ($items as $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+                    if ((string) ($item['id'] ?? '') === $payoutRef) {
+                        $match = $item;
+                        break;
+                    }
+                }
+            }
+            $match ??= is_array($items[0] ?? null) ? $items[0] : null;
+            if (is_array($match)) {
+                $status = (string) ($match['status'] ?? $match['payout_status'] ?? '');
+            }
+        }
+        if ($status === '') {
+            $status = (string) ($payload['status'] ?? $payload['payout_status'] ?? '');
+        }
+
+        return $this->mapRemoteStatus($status);
+    }
+
+    public function mapRemoteStatus(string $status): string
+    {
+        return match (strtoupper(trim($status))) {
             'FINISHED' => WithdrawalStatus::Completed->value,
-            'REJECTED', 'REJECTED_NOT_CHECKED', 'FAILED' => WithdrawalStatus::Declined->value,
+            'REJECTED', 'REJECTED_NOT_CHECKED', 'FAILED', 'CANCELLED', 'CANCELED' => WithdrawalStatus::Declined->value,
             'CREATING', 'WAITING', 'PROCESSING', 'SENDING', 'NEW' => WithdrawalStatus::Processing->value,
             default => WithdrawalStatus::Processing->value,
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function fetchPayoutStatus(Withdrawal $withdrawal): array
+    {
+        $ref = trim((string) $withdrawal->payout_ref);
+        $batchId = trim((string) ($withdrawal->meta['batch_id'] ?? ''));
+        $ids = [];
+        if ($this->isNowPaymentsId($ref)) {
+            $ids[] = $ref;
+        }
+        if ($this->isNowPaymentsId($batchId) && ! in_array($batchId, $ids, true)) {
+            $ids[] = $batchId;
+        }
+
+        $lastError = null;
+        foreach ($ids as $id) {
+            try {
+                return $this->client->getPayoutStatus($id);
+            } catch (RuntimeException $e) {
+                $lastError = $e;
+                if (! str_contains(strtolower($e->getMessage()), 'not found')) {
+                    throw $e;
+                }
+            }
+        }
+
+        if ($this->isNowPaymentsId($batchId)) {
+            $listed = $this->client->listPayouts([
+                'batch_id' => $batchId,
+                'limit' => 50,
+                'page' => 0,
+            ]);
+            $match = $this->matchListedPayout($listed, $ref, $batchId);
+            if ($match !== null) {
+                return [
+                    'id' => $batchId,
+                    'withdrawals' => [$match],
+                ];
+            }
+        }
+
+        if ($ids === []) {
+            throw new RuntimeException('NOWPayments payout id is missing or not a valid numeric payout id.');
+        }
+
+        throw $lastError ?? new RuntimeException('NOWPayments payout was not found.');
+    }
+
+    private function isNowPaymentsId(string $id): bool
+    {
+        return $id !== '' && ctype_digit($id);
+    }
+
+    /**
+     * @param  array<string, mixed>  $listed
+     * @return array<string, mixed>|null
+     */
+    private function matchListedPayout(array $listed, string $payoutRef, string $batchId): ?array
+    {
+        $rows = $listed['payouts'] ?? $listed['withdrawals'] ?? [];
+        if (! is_array($rows)) {
+            return null;
+        }
+
+        foreach ($rows as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $itemId = (string) ($item['id'] ?? '');
+            $itemBatch = (string) ($item['batch_withdrawal_id'] ?? '');
+            if (($payoutRef !== '' && $itemId === $payoutRef)
+                || ($batchId !== '' && ($itemId === $batchId || $itemBatch === $batchId))) {
+                return $item;
+            }
+        }
+
+        return null;
     }
 }

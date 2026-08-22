@@ -639,7 +639,7 @@ class PaymentGatewayScenariosTest extends TestCase
         ])->assertOk();
 
         $this->assertSame(WithdrawalStatus::Declined, $wd->fresh()->status);
-        $refund = (float) $wd->amount - (float) $wd->fee;
+        $refund = (float) $wd->amount;
         $this->assertEqualsWithDelta($afterDebit + $refund, (float) $this->root->fresh()->wallet_balance, 0.01);
 
         // Duplicate failed IPN must not double-refund
@@ -689,6 +689,214 @@ class PaymentGatewayScenariosTest extends TestCase
             'id' => 'wd-ok-1',
             'status' => 'FINISHED',
         ])->assertOk();
+
+        $this->assertSame(WithdrawalStatus::Completed, $wd->fresh()->status);
+    }
+
+    public function test_sync_processing_payouts_updates_from_nowpayments_and_is_idempotent_with_ipn(): void
+    {
+        $this->enableLiveNowPaymentsPayout();
+
+        Http::fake(function ($request) {
+            $url = $request->url();
+            if (str_contains($url, '/auth')) {
+                return Http::response(['token' => 'jwt'], 200);
+            }
+            if ($request->method() === 'GET' && preg_match('#/payout/([^/]+)$#', (string) parse_url($url, PHP_URL_PATH), $matches) === 1) {
+                $id = $matches[1];
+                $status = match ($id) {
+                    '5000000101' => 'FINISHED',
+                    '5000000102' => 'FAILED',
+                    default => 'SENDING',
+                };
+
+                return Http::response([
+                    'id' => $id,
+                    'withdrawals' => [['id' => $id, 'status' => $status]],
+                ], 200);
+            }
+
+            return Http::response(['ok' => true], 200);
+        });
+
+        $service = app(WithdrawalService::class);
+        $service->request($this->root, 25, self::USDT_EVM_ADDRESS);
+        $service->request($this->root, 30, self::USDT_EVM_ADDRESS);
+        $service->request($this->root, 20, self::USDT_EVM_ADDRESS);
+
+        $rows = Withdrawal::query()->orderBy('id')->get();
+        $this->assertCount(3, $rows);
+        $afterDebit = (float) $this->root->fresh()->wallet_balance;
+        $this->assertEqualsWithDelta(125, $afterDebit, 0.01);
+
+        $finished = $rows[0];
+        $failed = $rows[1];
+        $waiting = $rows[2];
+        $finished->update([
+            'status' => WithdrawalStatus::Processing,
+            'payout_provider' => PaymentProvider::NowPayments->value,
+            'payout_ref' => '5000000101',
+        ]);
+        $failed->update([
+            'status' => WithdrawalStatus::Processing,
+            'payout_provider' => PaymentProvider::NowPayments->value,
+            'payout_ref' => '5000000102',
+        ]);
+        $waiting->update([
+            'status' => WithdrawalStatus::Processing,
+            'payout_provider' => PaymentProvider::NowPayments->value,
+            'payout_ref' => '5000000103',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.withdrawals.index', 'processing'))
+            ->post(route('admin.withdrawals.sync-processing'))
+            ->assertRedirect(route('admin.withdrawals.index', 'processing'))
+            ->assertSessionHas('success');
+
+        $this->assertSame(WithdrawalStatus::Completed, $finished->fresh()->status);
+        $this->assertSame(WithdrawalStatus::Declined, $failed->fresh()->status);
+        $this->assertSame(WithdrawalStatus::Processing, $waiting->fresh()->status);
+        $this->assertNotNull($finished->fresh()->processed_at);
+        $this->assertNotNull($failed->fresh()->processed_at);
+
+        $afterSync = (float) $this->root->fresh()->wallet_balance;
+        $this->assertEqualsWithDelta($afterDebit + 30, $afterSync, 0.01);
+
+        Http::assertSent(fn ($request) => $request->method() === 'GET' && str_contains($request->url(), '/payout/5000000101'));
+        Http::assertSent(fn ($request) => $request->method() === 'GET' && str_contains($request->url(), '/payout/5000000102'));
+        Http::assertSent(fn ($request) => $request->method() === 'GET' && str_contains($request->url(), '/payout/5000000103'));
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.withdrawals.index', 'processing'))
+            ->post(route('admin.withdrawals.sync-processing'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertEqualsWithDelta($afterSync, (float) $this->root->fresh()->wallet_balance, 0.01);
+        $this->assertSame(WithdrawalStatus::Declined, $failed->fresh()->status);
+
+        $this->postSignedPayoutIpn([
+            'id' => '5000000102',
+            'status' => 'FAILED',
+        ])->assertOk();
+        $this->assertEqualsWithDelta($afterSync, (float) $this->root->fresh()->wallet_balance, 0.01);
+
+        $this->postSignedPayoutIpn([
+            'id' => '5000000101',
+            'status' => 'FINISHED',
+        ])->assertOk();
+        $this->assertSame(WithdrawalStatus::Completed, $finished->fresh()->status);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.withdrawals.index', 'completed'))
+            ->assertOk()
+            ->assertSee('5000000101', false);
+        $this->actingAs($this->admin)
+            ->get(route('admin.withdrawals.index', 'declined'))
+            ->assertOk()
+            ->assertSee('5000000102', false);
+        $this->actingAs($this->admin)
+            ->get(route('admin.withdrawals.index', 'processing'))
+            ->assertOk()
+            ->assertSee('5000000103', false);
+    }
+
+    public function test_sync_skips_invalid_payout_id_and_404_without_refund(): void
+    {
+        $this->enableLiveNowPaymentsPayout();
+
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), '/auth')) {
+                return Http::response(['token' => 'jwt'], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($request->url(), '/payout/5000999999')) {
+                return Http::response([
+                    'status' => false,
+                    'statusCode' => 404,
+                    'message' => 'Endpoint not found',
+                ], 404);
+            }
+
+            return Http::response(['ok' => true], 200);
+        });
+
+        $missing = Withdrawal::query()->create([
+            'user_id' => $this->root->id,
+            'amount' => '25.00',
+            'fee' => '2.00',
+            'payable_amount' => '23.00',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
+            'status' => WithdrawalStatus::Processing,
+            'payout_provider' => PaymentProvider::NowPayments->value,
+            'payout_ref' => '5000999999',
+        ]);
+        $invalid = Withdrawal::query()->create([
+            'user_id' => $this->root->id,
+            'amount' => '30.00',
+            'fee' => '2.00',
+            'payable_amount' => '28.00',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
+            'status' => WithdrawalStatus::Processing,
+            'payout_provider' => PaymentProvider::NowPayments->value,
+            'payout_ref' => 'bep20-13968558',
+        ]);
+        $before = (float) $this->root->fresh()->wallet_balance;
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.withdrawals.index', 'processing'))
+            ->post(route('admin.withdrawals.sync-processing'))
+            ->assertRedirect()
+            ->assertSessionHas('success')
+            ->assertSessionHas('error');
+
+        $this->assertSame(WithdrawalStatus::Processing, $missing->fresh()->status);
+        $this->assertSame(WithdrawalStatus::Processing, $invalid->fresh()->status);
+        $this->assertEqualsWithDelta($before, (float) $this->root->fresh()->wallet_balance, 0.01);
+        Http::assertSent(fn ($request) => $request->method() === 'GET' && str_contains($request->url(), '/payout/5000999999'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'bep20-13968558'));
+    }
+
+    public function test_sync_falls_back_to_payout_list_by_batch_id(): void
+    {
+        $this->enableLiveNowPaymentsPayout();
+
+        Http::fake(function ($request) {
+            $path = (string) parse_url($request->url(), PHP_URL_PATH);
+            if (str_contains($request->url(), '/auth')) {
+                return Http::response(['token' => 'jwt'], 200);
+            }
+            if ($request->method() === 'GET' && preg_match('#/payout/\d+$#', $path) === 1) {
+                return Http::response(['status' => false, 'statusCode' => 404, 'message' => 'Endpoint not found'], 404);
+            }
+            if ($request->method() === 'GET' && str_ends_with(rtrim($path, '/'), '/payout')) {
+                return Http::response([
+                    'payouts' => [[
+                        'id' => '5000000201',
+                        'batch_withdrawal_id' => '5000000713',
+                        'status' => 'FINISHED',
+                    ]],
+                ], 200);
+            }
+
+            return Http::response(['ok' => true], 200);
+        });
+
+        $wd = Withdrawal::query()->create([
+            'user_id' => $this->root->id,
+            'amount' => '25.00',
+            'fee' => '2.00',
+            'payable_amount' => '23.00',
+            'wallet_address' => self::USDT_EVM_ADDRESS,
+            'status' => WithdrawalStatus::Processing,
+            'payout_provider' => PaymentProvider::NowPayments->value,
+            'payout_ref' => '5000000201',
+            'meta' => ['batch_id' => '5000000713'],
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.withdrawals.sync-processing'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
 
         $this->assertSame(WithdrawalStatus::Completed, $wd->fresh()->status);
     }

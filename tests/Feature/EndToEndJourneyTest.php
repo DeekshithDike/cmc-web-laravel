@@ -295,7 +295,7 @@ class EndToEndJourneyTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame(WithdrawalStatus::Declined, $wd->fresh()->status);
-        // refund = amount - fee (fee from WITHDRAWAL_FEE env) = 30 - 2 = 28
-        $this->assertEqualsWithDelta($balanceAfterRequest + 28, (float) $this->root->fresh()->wallet_balance, 0.01);
+        // refund = full requested amount (fee is not kept on decline)
+        $this->assertEqualsWithDelta($balanceAfterRequest + 30, (float) $this->root->fresh()->wallet_balance, 0.01);
     }
 }
