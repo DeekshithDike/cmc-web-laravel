@@ -10,6 +10,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Services\Business\BusinessVolumeService;
+use App\Support\IncomeCalendar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -64,7 +65,7 @@ class ExportAndBusinessTest extends TestCase
             'package_id' => $package->id,
         ])->assertRedirect();
 
-        $rows = app(BusinessVolumeService::class)->paginateReportForDate(now()->toDateString());
+        $rows = app(BusinessVolumeService::class)->paginateReportForDate(IncomeCalendar::today());
         $this->assertTrue($rows->contains(fn ($r) => $r['user_id'] === $root->id && $r['left'] === '100.00'));
     }
 

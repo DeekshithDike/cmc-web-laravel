@@ -24,8 +24,8 @@ class DashboardController extends Controller
         $showExpiryWarning = false;
 
         if ($user->expiry_date) {
-            $daysLeft = (int) now()->startOfDay()->diffInDays($user->expiry_date->startOfDay(), false);
-            $showExpiryWarning = $daysLeft >= 0 && $daysLeft <= $warningDays;
+            $daysLeft = IncomeCalendar::daysUntil($user->expiry_date);
+            $showExpiryWarning = $daysLeft !== null && $daysLeft >= 0 && $daysLeft <= $warningDays;
         }
 
         $roi = $this->roiWallet((int) $user->id);

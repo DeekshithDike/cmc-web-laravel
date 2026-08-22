@@ -22,6 +22,68 @@ final class IncomeCalendar
     }
 
     /**
+     * Inclusive UTC start and exclusive UTC end of a Malaysia calendar day.
+     * Use this for created_at / processed_at "today" filters — never UTC whereDate().
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function malaysiaDayUtcBounds(?string $ymd = null, ?Carbon $now = null): array
+    {
+        $day = $ymd ?: self::today($now);
+        $start = Carbon::parse($day, self::timezone())->startOfDay()->utc();
+
+        return [$start, $start->copy()->addDay()];
+    }
+
+    public static function constrainToMalaysiaDay(mixed $query, string $column, ?string $ymd = null, ?Carbon $now = null): void
+    {
+        [$start, $end] = self::malaysiaDayUtcBounds($ymd, $now);
+        $query->where($column, '>=', $start)->where($column, '<', $end);
+    }
+
+    public static function daysUntil(mixed $date, ?Carbon $now = null): ?int
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        $ymd = $date instanceof Carbon
+            ? $date->toDateString()
+            : Carbon::parse((string) $date)->toDateString();
+        $today = Carbon::parse(self::today($now), self::timezone())->startOfDay();
+        $target = Carbon::parse($ymd, self::timezone())->startOfDay();
+
+        return (int) $today->diffInDays($target, false);
+    }
+
+    public static function isExpired(mixed $date, ?Carbon $now = null): bool
+    {
+        if ($date === null || $date === '') {
+            return false;
+        }
+
+        $ymd = $date instanceof Carbon
+            ? $date->toDateString()
+            : Carbon::parse((string) $date)->toDateString();
+
+        return $ymd < self::today($now);
+    }
+
+    /**
+     * Compact timestamp for tables/CSV: 2026-08-19 20:00 (Malaysia).
+     */
+    public static function formatDateTime(mixed $timestamp): string
+    {
+        if ($timestamp === null || $timestamp === '') {
+            return '—';
+        }
+
+        $at = $timestamp instanceof Carbon ? $timestamp->copy() : Carbon::parse((string) $timestamp);
+
+        return $at->timezone(self::timezone())->format('Y-m-d H:i');
+    }
+
+    /**
      * Admin UI date: 19 Aug 2026. HTML date inputs still use Y-m-d.
      */
     public static function formatDate(mixed $date): string

@@ -77,7 +77,7 @@ class AdminCustomerPortalTest extends TestCase
             ->assertSee('Active package', false)
             ->assertSee('Starter', false)
             ->assertSee('Expiry', false)
-            ->assertSee($this->root->expiry_date->format('Y-m-d'), false)
+            ->assertSee(\App\Support\IncomeCalendar::formatDate($this->root->expiry_date), false)
             ->assertDontSee('No package', false)
             ->assertDontSee('Withdrawal Now', false)
             ->assertDontSee('Request withdrawal', false)

@@ -104,7 +104,17 @@ class CustomerVerificationUnitTest extends TestCase
         $this->assertSame('19 Aug 2026, 8:00 PM', IncomeCalendar::formatWhen($stamp));
         $this->assertSame('12 Aug 2026', IncomeCalendar::formatWhen(null, '2026-08-12'));
         $this->assertSame('19 Aug 2026', IncomeCalendar::formatDate('2026-08-19'));
+        $this->assertSame('2026-08-19 20:00', IncomeCalendar::formatDateTime($stamp));
         $this->assertSame('—', IncomeCalendar::formatWhen(null, null));
+        $this->assertSame('—', IncomeCalendar::formatDateTime(null));
+
+        $this->assertSame(['2026-08-16 16:00:00', '2026-08-17 16:00:00'], array_map(
+            fn ($at) => $at->timezone('UTC')->format('Y-m-d H:i:s'),
+            IncomeCalendar::malaysiaDayUtcBounds('2026-08-17'),
+        ));
+        $this->assertTrue(IncomeCalendar::isExpired('2026-08-16', Carbon::parse('2026-08-16 16:24:46', 'UTC')));
+        $this->assertFalse(IncomeCalendar::isExpired('2026-08-17', Carbon::parse('2026-08-16 16:24:46', 'UTC')));
+        $this->assertSame(0, IncomeCalendar::daysUntil('2026-08-17', Carbon::parse('2026-08-16 16:24:46', 'UTC')));
     }
 
     public function test_admin_answers_match_complaint_focus(): void

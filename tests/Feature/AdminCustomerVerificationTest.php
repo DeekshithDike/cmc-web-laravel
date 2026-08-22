@@ -153,6 +153,60 @@ class AdminCustomerVerificationTest extends TestCase
             ->assertDontSee('Left / Right breakdown', false);
     }
 
+    public function test_all_dates_includes_volume_before_malaysia_created_on_for_any_customer(): void
+    {
+        $first = $this->addMember('verify-utc-a@citymaxcrypto.com', 'left', extra: ['name' => 'Utc Join A']);
+        $second = $this->addMember('verify-utc-b@citymaxcrypto.com', 'right', extra: ['name' => 'Utc Join B']);
+
+        foreach ([$first, $second] as $customer) {
+            $customer->forceFill(['created_at' => Carbon::parse('2026-08-16 16:24:46', 'UTC')])->save();
+        }
+
+        BinaryTreeLeft::query()->create([
+            'user_id' => $first->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '50000.00',
+            'business_date' => '2026-08-16',
+        ]);
+        BinaryTreeRight::query()->create([
+            'user_id' => $first->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '9650.00',
+            'business_date' => '2026-08-17',
+        ]);
+        BinaryTreeLeft::query()->create([
+            'user_id' => $second->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '12000.00',
+            'business_date' => '2026-08-16',
+        ]);
+        BinaryTreeRight::query()->create([
+            'user_id' => $second->id,
+            'from_user_id' => $this->root->id,
+            'amount' => '800.00',
+            'business_date' => '2026-08-17',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', ['q' => $first->id]))
+            ->assertOk()
+            ->assertSee('lifetime left/right', false)
+            ->assertSee('$50,000.00', false)
+            ->assertSee('$9,650.00', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', ['q' => $second->id]))
+            ->assertOk()
+            ->assertSee('$12,000.00', false)
+            ->assertSee('$800.00', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.verification.index', ['q' => $first->id, 'range' => 'today']))
+            ->assertOk()
+            ->assertDontSee('$50,000.00', false)
+            ->assertDontSee('$9,650.00', false);
+    }
+
     public function test_one_sided_volume_is_not_treated_as_a_match(): void
     {
         BinaryTreeLeft::query()->create([

@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Support\IncomeCalendar;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -54,7 +55,7 @@ class LoginService
             ]);
         }
 
-        if ($user->expiry_date && $user->expiry_date->copy()->endOfDay()->isPast()) {
+        if ($user->expiry_date && IncomeCalendar::isExpired($user->expiry_date)) {
             throw ValidationException::withMessages([
                 'login_id' => 'This membership ID has expired. Please contact support for renewal.',
             ]);

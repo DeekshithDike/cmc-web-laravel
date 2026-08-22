@@ -14,7 +14,7 @@
             <thead><tr><th>Customer ID</th><th>Name</th><th>Package</th><th>Expiry</th><th></th></tr></thead>
             <tbody>
             @forelse($users as $user)
-                @php $days = $user->expiry_date ? now()->startOfDay()->diffInDays($user->expiry_date, false) : null; @endphp
+                @php $days = \App\Support\IncomeCalendar::daysUntil($user->expiry_date); @endphp
                 <tr>
                     <td>{{ $user->id }}</td>
                     <td>{{ $user->name }}</td>

@@ -322,7 +322,7 @@ class MoneyPathAndIncomeTest extends TestCase
         $this->assertSame('0.00', number_format((float) $carry->right_carry, 2, '.', ''));
     }
 
-    public function test_daily_binary_pay_is_capped_at_five_hundred_when_package_is_larger(): void
+    public function test_daily_binary_pay_is_capped_at_activated_package_when_five_percent_is_larger(): void
     {
         $elite = Package::query()->create([
             'name' => 'Elite',
@@ -337,13 +337,13 @@ class MoneyPathAndIncomeTest extends TestCase
         BinaryTreeLeft::query()->create([
             'user_id' => $this->root->id,
             'from_user_id' => $this->root->id,
-            'amount' => '20000.00',
+            'amount' => '50000.00',
             'business_date' => $asOf,
         ]);
         BinaryTreeRight::query()->create([
             'user_id' => $this->root->id,
             'from_user_id' => $this->root->id,
-            'amount' => '20000.00',
+            'amount' => '50000.00',
             'business_date' => $asOf,
         ]);
 
@@ -352,9 +352,9 @@ class MoneyPathAndIncomeTest extends TestCase
 
         $row = PaymentDetail::query()->where('user_id', $this->root->id)->firstOrFail();
         $this->assertSame('20.00', number_format((float) $row->roi_amount, 2, '.', ''));
-        $this->assertSame('500.00', number_format((float) $row->binary_amount, 2, '.', ''));
+        $this->assertSame('2000.00', number_format((float) $row->binary_amount, 2, '.', ''));
         $this->assertEquals(
-            number_format($before + 520.00, 2, '.', ''),
+            number_format($before + 2020.00, 2, '.', ''),
             number_format((float) $this->root->fresh()->wallet_balance, 2, '.', '')
         );
     }

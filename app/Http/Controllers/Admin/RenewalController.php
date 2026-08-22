@@ -8,6 +8,7 @@ use App\Models\RenewalHistory;
 use App\Models\User;
 use App\Services\Renewals\RenewalService;
 use App\Support\AdminList;
+use App\Support\IncomeCalendar;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -25,7 +26,7 @@ class RenewalController extends Controller
             ->where('role', UserRole::Customer)
             ->where('is_active', true)
             ->where('payment_status', true)
-            ->whereDate('expiry_date', '>=', now()->toDateString())
+            ->whereDate('expiry_date', '>=', IncomeCalendar::today())
             ->tap(fn ($query) => AdminList::applySearch($query, $q, ['name', 'email', 'phone']))
             ->with('package:id,name')
             ->orderBy('expiry_date')
@@ -82,7 +83,7 @@ class RenewalController extends Controller
         $users = User::query()
             ->where('role', UserRole::Customer)
             ->where(function ($query) {
-                $query->whereDate('expiry_date', '<', now()->toDateString())
+                $query->whereDate('expiry_date', '<', IncomeCalendar::today())
                     ->orWhere('status', 'expired');
             })
             ->tap(fn ($query) => AdminList::applySearch($query, $q, ['name', 'email', 'phone']))

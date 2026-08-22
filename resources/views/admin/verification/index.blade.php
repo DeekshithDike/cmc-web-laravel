@@ -124,7 +124,7 @@
     <div class="ibox">
         <div class="ibox-title"><h5>Income and business for these dates · {{ $cid }}</h5></div>
         <div class="ibox-content">
-            <p class="text-muted">These numbers are for {{ $cid }} and the dates selected above. ROI, binary, and referral are money already in the wallet. Left, Right, and Matched are package volume on {{ $cid }}'s tree, not cash. Today is not paid until midnight Malaysia time. Unmatched leftover now: Left ${{ $report->carryNow['left'] }} / Right ${{ $report->carryNow['right'] }}.</p>
+            <p class="text-muted">These numbers are for {{ $cid }} and the dates selected above. All dates is lifetime left/right (same as the customer tree), including business stored before the Malaysia activation day. ROI, binary, and referral are money already in the wallet. Left, Right, and Matched are package volume on {{ $cid }}'s tree, not cash. Today is not paid until midnight Malaysia time. Unmatched leftover now: Left ${{ $report->carryNow['left'] }} / Right ${{ $report->carryNow['right'] }}.</p>
             <div class="row text-center">
                 <div class="col-sm-4 m-b-md"><div class="font-bold">{{ $money($report->totals['roi']) }}</div><div class="text-muted">ROI paid</div></div>
                 <div class="col-sm-4 m-b-md"><div class="font-bold">{{ $money($report->totals['binary']) }}</div><div class="text-muted">Binary paid</div></div>

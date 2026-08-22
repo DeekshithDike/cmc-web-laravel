@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    $malaysiaNow = now('Asia/Kuala_Lumpur');
+    $malaysiaNow = now(\App\Support\IncomeCalendar::timezone());
 @endphp
 <div class="mb-5 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-3 min-w-0">
@@ -29,7 +29,7 @@
         <i class="ph ph-warning-circle text-xl mt-0.5"></i>
         <div>
             <p class="font-semibold">Membership renewing soon</p>
-            <p class="opacity-90">Expires in {{ $daysLeft }} day(s) on {{ $user->expiry_date?->format('Y-m-d') }}.</p>
+            <p class="opacity-90">Expires in {{ $daysLeft }} day(s) on {{ \App\Support\IncomeCalendar::formatDate($user->expiry_date) }}.</p>
         </div>
     </div>
 @endif
@@ -78,7 +78,7 @@
         <div class="mt-5 grid grid-cols-2 gap-3">
             <div class="rounded-xl bg-primary/5 border border-primary/15 p-3">
                 <p class="text-[11px] text-muted uppercase tracking-wide">Expiry</p>
-                <p class="text-sm font-semibold text-heading mt-1">{{ $user->expiry_date?->format('Y-m-d') ?? '—' }}</p>
+                <p class="text-sm font-semibold text-heading mt-1">{{ \App\Support\IncomeCalendar::formatDate($user->expiry_date) }}</p>
             </div>
             <div class="rounded-xl bg-primary/5 border border-primary/15 p-3">
                 <p class="text-[11px] text-muted uppercase tracking-wide">Status</p>

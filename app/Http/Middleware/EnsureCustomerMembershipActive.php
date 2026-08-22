@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\IncomeCalendar;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class EnsureCustomerMembershipActive
             return redirect()->route('customer.login');
         }
 
-        if ($user->expiry_date && $user->expiry_date->copy()->endOfDay()->isPast()) {
+        if ($user->expiry_date && IncomeCalendar::isExpired($user->expiry_date)) {
             Auth::guard('customer')->logout();
 
             return redirect()

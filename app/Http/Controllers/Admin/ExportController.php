@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Withdrawal;
 use App\Support\AdminList;
 use App\Support\CsvExporter;
+use App\Support\IncomeCalendar;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -105,8 +106,8 @@ class ExportController extends Controller
                 $u->position instanceof \BackedEnum ? $u->position->value : $u->position,
                 $u->package->name ?? '',
                 $u->wallet_balance,
-                $u->expiry_date?->format('Y-m-d'),
-                $u->created_at?->format('Y-m-d H:i'),
+                $u->expiry_date ? IncomeCalendar::formatDate($u->expiry_date) : '',
+                $u->created_at ? IncomeCalendar::formatDateTime($u->created_at) : '',
             ];
         }
     }
@@ -127,7 +128,7 @@ class ExportController extends Controller
                 $w->payable_amount,
                 $w->wallet_address,
                 $w->remarks,
-                $w->processed_at?->format('Y-m-d H:i'),
+                $w->processed_at ? IncomeCalendar::formatDateTime($w->processed_at) : '',
             ];
         }
     }

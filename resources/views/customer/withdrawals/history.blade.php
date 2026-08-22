@@ -28,7 +28,7 @@
                     <td class="px-4 py-3">${{ number_format((float) $item->fee, 2) }}</td>
                     <td class="px-4 py-3 font-semibold text-primary">${{ number_format((float) $item->payable_amount, 2) }}</td>
                     <td class="px-4 py-3"><span class="cmc-chip !normal-case tracking-normal">{{ $item->status->label() }}</span></td>
-                    <td class="px-4 py-3 text-muted">{{ $item->created_at?->format('Y-m-d H:i') }}</td>
+                    <td class="px-4 py-3 text-muted">{{ \App\Support\IncomeCalendar::formatWhen($item->created_at) }}</td>
                 </tr>
             @empty
                 <tr>

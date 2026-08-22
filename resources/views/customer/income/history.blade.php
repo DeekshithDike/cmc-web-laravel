@@ -24,7 +24,7 @@
             <tbody>
             @forelse($rows as $row)
                 <tr class="border-t border-border hover:bg-primary/5 transition-colors">
-                    <td class="px-4 py-3 text-heading font-medium">{{ $row->paid_on?->format('Y-m-d') }}</td>
+                    <td class="px-4 py-3 text-heading font-medium">{{ \App\Support\IncomeCalendar::formatDate($row->paid_on) }}</td>
                     <td class="px-4 py-3">${{ number_format((float) $row->roi_amount, 2) }}</td>
                     <td class="px-4 py-3">${{ number_format((float) $row->binary_amount, 2) }}</td>
                     <td class="px-4 py-3">${{ number_format((float) $row->referral_amount, 2) }}</td>

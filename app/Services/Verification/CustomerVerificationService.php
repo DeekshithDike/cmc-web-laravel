@@ -39,6 +39,9 @@ class CustomerVerificationService
         $today = IncomeCalendar::today();
         $createdOn = $user->created_at?->timezone(IncomeCalendar::timezone())->toDateString() ?: $today;
         [$from, $to] = $filters->period($today, $createdOn);
+        if ($filters->range === 'all') {
+            $from = $this->lifetimeStart((int) $user->id, $createdOn);
+        }
         $perPage = AdminList::perPage($request);
 
         $user->loadMissing([
@@ -110,6 +113,34 @@ class CustomerVerificationService
             'expired' => $expired,
             'eligible' => (bool) $user->is_active && (bool) $user->payment_status && ! $expired,
         ];
+    }
+
+    /**
+     * All dates is lifetime: include volume/pay rows dated before the Malaysia
+     * created-on day (UTC join times after midnight Malaysia).
+     */
+    private function lifetimeStart(int $userId, string $createdOn): string
+    {
+        $earliest = $this->earliestActivityDate($userId);
+
+        return $earliest !== null && $earliest < $createdOn ? $earliest : $createdOn;
+    }
+
+    private function earliestActivityDate(int $userId): ?string
+    {
+        $dates = collect([
+            BinaryTreeLeft::query()->where('user_id', $userId)->min('business_date'),
+            BinaryTreeRight::query()->where('user_id', $userId)->min('business_date'),
+            PaymentDetail::query()->where('user_id', $userId)->min('paid_on'),
+            ReferralIncome::query()->where('user_id', $userId)->min('earned_on'),
+            BinaryIncome::query()->where('user_id', $userId)->min('earned_on'),
+            CarryForward::query()->where('user_id', $userId)->min('as_of'),
+        ])->filter(fn ($date) => $date !== null && $date !== '')
+            ->map(fn ($date) => $date instanceof Carbon
+                ? $date->toDateString()
+                : Carbon::parse((string) $date)->toDateString());
+
+        return $dates->isEmpty() ? null : $dates->min();
     }
 
     /**
