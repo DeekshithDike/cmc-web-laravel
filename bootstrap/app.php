@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\BindAdminPortalCustomer;
 use App\Http\Middleware\EnsureCustomerMembershipActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsCustomer;
@@ -44,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'customer' => EnsureUserIsCustomer::class,
             'membership' => EnsureCustomerMembershipActive::class,
+            'customer-portal' => BindAdminPortalCustomer::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

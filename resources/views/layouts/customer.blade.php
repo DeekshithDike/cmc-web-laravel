@@ -19,12 +19,16 @@
     @stack('styles')
 </head>
 <body class="cmc-shell bg-bg text-text dark:text-text font-sans antialiased relative">
+@php
+    $isAdminView = ! empty($isAdminView);
+    $portalMember = $portalMember ?? auth('customer')->user();
+@endphp
 <div class="cmc-ambient" aria-hidden="true"></div>
 <div id="mobile-sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden opacity-0 transition-opacity duration-300 lg:hidden" onclick="closeMobileSidebar()"></div>
 
 <aside id="mobile-sidebar" class="cmc-sidebar fixed top-0 left-0 z-70 h-full w-[280px] shadow-2xl transform -translate-x-full transition-transform duration-300 lg:hidden flex flex-col">
     <div class="h-16 flex items-center justify-between px-4 border-b border-border">
-        <a class="flex items-center gap-3" href="{{ route('customer.dashboard') }}">
+        <a class="flex items-center gap-3" href="{{ customer_portal_route('dashboard') }}">
             <img src="{{ asset('customer-assets/images/logo.png') }}" alt="{{ config('citymax.name') }}" class="h-8">
         </a>
         <button type="button" aria-label="Close menu" class="w-10 h-10 rounded-xl flex items-center justify-center text-muted hover:bg-white/5" onclick="closeMobileSidebar()">
@@ -34,25 +38,29 @@
     <nav class="flex-1 flex flex-col overflow-y-auto p-3">
         <div class="cmc-nav-group">
             <p class="nav-section">Main</p>
-            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.dashboard') ? 'is-active active' : '' }}" href="{{ route('customer.dashboard') }}"><i class="ph ph-squares-four text-xl"></i><span class="font-medium">Dashboard</span></a>
-            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.tree*') ? 'is-active active' : '' }}" href="{{ route('customer.tree') }}"><i class="ph ph-tree-structure text-xl"></i><span class="font-medium">My Tree</span></a>
+            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.dashboard', 'admin.customers.dashboard') ? 'is-active active' : '' }}" href="{{ customer_portal_route('dashboard') }}"><i class="ph ph-squares-four text-xl"></i><span class="font-medium">Dashboard</span></a>
+            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.tree*', 'admin.customers.tree*') ? 'is-active active' : '' }}" href="{{ customer_portal_route('tree') }}"><i class="ph ph-tree-structure text-xl"></i><span class="font-medium">My Tree</span></a>
         </div>
         <div class="cmc-nav-group">
             <p class="nav-section">Wallet</p>
+            @unless ($isAdminView)
             <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.withdrawals.create') ? 'is-active active' : '' }}" href="{{ route('customer.withdrawals.create') }}"><i class="ph ph-hand-withdraw text-xl"></i><span class="font-medium">Withdrawal Now</span></a>
-            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.withdrawals.history') ? 'is-active active' : '' }}" href="{{ route('customer.withdrawals.history') }}"><i class="ph ph-clock-counter-clockwise text-xl"></i><span class="font-medium">Withdrawal History</span></a>
-            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.income.history') ? 'is-active active' : '' }}" href="{{ route('customer.income.history') }}"><i class="ph ph-chart-line-up text-xl"></i><span class="font-medium">Income History</span></a>
+            @endunless
+            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.withdrawals.history', 'admin.customers.withdrawals.history') ? 'is-active active' : '' }}" href="{{ customer_portal_route('withdrawals.history') }}"><i class="ph ph-clock-counter-clockwise text-xl"></i><span class="font-medium">Withdrawal History</span></a>
+            <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.income.history', 'admin.customers.income.history') ? 'is-active active' : '' }}" href="{{ customer_portal_route('income.history') }}"><i class="ph ph-chart-line-up text-xl"></i><span class="font-medium">Income History</span></a>
         </div>
+        @unless ($isAdminView)
         <div class="cmc-nav-group">
             <p class="nav-section">Account</p>
             <a class="mobile-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('customer.password.*') ? 'is-active active' : '' }}" href="{{ route('customer.password.edit') }}"><i class="ph ph-key text-xl"></i><span class="font-medium">Change Password</span></a>
         </div>
+        @endunless
     </nav>
 </aside>
 
 <aside id="sidebar" class="cmc-sidebar fixed top-0 left-0 z-40 h-full w-64 border-r hidden lg:flex flex-col transition-all duration-300">
     <div class="h-16 flex items-center justify-between px-4 border-b border-border-subtle">
-        <a class="flex items-center gap-3 overflow-hidden" href="{{ route('customer.dashboard') }}">
+        <a class="flex items-center gap-3 overflow-hidden" href="{{ customer_portal_route('dashboard') }}">
             <img src="{{ asset('customer-assets/images/logo.png') }}" alt="logo" class="h-8">
         </a>
         <button id="sidebar-toggle" class="sidebar-toggle-btn w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-white hover:bg-white/5 transition-colors flex-shrink-0" aria-label="Toggle sidebar">
@@ -62,26 +70,30 @@
     <nav class="flex-1 flex flex-col overflow-y-auto py-3 px-2.5">
         <div class="cmc-nav-group">
             <p class="nav-section nav-text">Main</p>
-            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.dashboard') ? 'is-active active' : '' }}" href="{{ route('customer.dashboard') }}"><i class="ph ph-squares-four text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Dashboard</span></a>
-            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.tree*') ? 'is-active active' : '' }}" href="{{ route('customer.tree') }}"><i class="ph ph-tree-structure text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">My Tree</span></a>
+            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.dashboard', 'admin.customers.dashboard') ? 'is-active active' : '' }}" href="{{ customer_portal_route('dashboard') }}"><i class="ph ph-squares-four text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Dashboard</span></a>
+            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.tree*', 'admin.customers.tree*') ? 'is-active active' : '' }}" href="{{ customer_portal_route('tree') }}"><i class="ph ph-tree-structure text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">My Tree</span></a>
         </div>
         <div class="cmc-nav-group">
             <p class="nav-section nav-text">Wallet</p>
+            @unless ($isAdminView)
             <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.withdrawals.create') ? 'is-active active' : '' }}" href="{{ route('customer.withdrawals.create') }}"><i class="ph ph-hand-withdraw text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Withdrawal Now</span></a>
-            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.withdrawals.history') ? 'is-active active' : '' }}" href="{{ route('customer.withdrawals.history') }}"><i class="ph ph-clock-counter-clockwise text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Withdrawal History</span></a>
-            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.income.history') ? 'is-active active' : '' }}" href="{{ route('customer.income.history') }}"><i class="ph ph-chart-line-up text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Income History</span></a>
+            @endunless
+            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.withdrawals.history', 'admin.customers.withdrawals.history') ? 'is-active active' : '' }}" href="{{ customer_portal_route('withdrawals.history') }}"><i class="ph ph-clock-counter-clockwise text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Withdrawal History</span></a>
+            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.income.history', 'admin.customers.income.history') ? 'is-active active' : '' }}" href="{{ customer_portal_route('income.history') }}"><i class="ph ph-chart-line-up text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Income History</span></a>
         </div>
+        @unless ($isAdminView)
         <div class="cmc-nav-group">
             <p class="nav-section nav-text">Account</p>
             <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('customer.password.*') ? 'is-active active' : '' }}" href="{{ route('customer.password.edit') }}"><i class="ph ph-key text-2xl flex-shrink-0"></i><span class="nav-text font-medium whitespace-nowrap">Change Password</span></a>
         </div>
+        @endunless
     </nav>
     <div class="border-t border-border-subtle">
         <div class="cmc-side-user flex items-center gap-3">
-            <div class="cmc-avatar w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0">{{ strtoupper(substr(auth('customer')->user()->name, 0, 1)) }}</div>
+            <div class="cmc-avatar w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0">{{ strtoupper(substr($portalMember->name, 0, 1)) }}</div>
             <div class="nav-text min-w-0 flex-1 leading-tight">
-                <p class="text-sm font-semibold text-white truncate">{{ auth('customer')->user()->name }}</p>
-                <p class="text-[11px] truncate" style="color: color-mix(in srgb, #9ec9ef 80%, transparent)">ID {{ auth('customer')->id() }}</p>
+                <p class="text-sm font-semibold text-white truncate">{{ $portalMember->name }}</p>
+                <p class="text-[11px] truncate" style="color: color-mix(in srgb, #9ec9ef 80%, transparent)">ID {{ $portalMember->id }}</p>
             </div>
         </div>
     </div>
@@ -106,12 +118,18 @@
             <button type="button" onclick="cmcToggleTheme()" class="topbar-icon-btn w-9 h-9 sm:w-10 sm:h-10 border border-border" aria-label="Toggle theme">
                 <i class="ph ph-moon text-lg"></i>
             </button>
+            @if ($isAdminView)
+                <a href="{{ route('admin.users.index') }}" class="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
+                    Back to admin <i class="ph ph-arrow-left text-base"></i>
+                </a>
+            @else
             <form method="POST" action="{{ route('customer.logout') }}">
                 @csrf
                 <button type="submit" class="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
                     Log out <i class="ph ph-sign-out text-base"></i>
                 </button>
             </form>
+            @endif
         </div>
     </div>
 </header>

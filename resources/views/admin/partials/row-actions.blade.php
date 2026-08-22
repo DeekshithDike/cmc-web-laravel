@@ -5,7 +5,7 @@
     <ul class="dropdown-menu dropdown-menu-right">
         @foreach ($actions as $action)
             <li>
-                <a href="{{ $action['url'] }}"><i class="fa {{ $action['icon'] }} m-r-xs"></i> {{ $action['label'] }}</a>
+                <a href="{{ $action['url'] }}"@if (! empty($action['target'])) target="{{ $action['target'] }}" rel="noopener"@endif><i class="fa {{ $action['icon'] }} m-r-xs"></i> {{ $action['label'] }}</a>
             </li>
         @endforeach
     </ul>

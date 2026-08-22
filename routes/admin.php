@@ -1,17 +1,21 @@
 <?php
 
-use App\Http\Controllers\Admin\ExportController;
-use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\BusinessController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\IncomeController;
 use App\Http\Controllers\Admin\PasswordController;
+use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PowerIdController;
 use App\Http\Controllers\Admin\RenewalController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\Admin\WithdrawalController;
 use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
+use App\Http\Controllers\Customer\IncomeController as CustomerIncomeController;
+use App\Http\Controllers\Customer\TreeController as CustomerTreeController;
+use App\Http\Controllers\Customer\WithdrawalController as CustomerWithdrawalController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:admin', 'admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -30,6 +34,18 @@ Route::middleware(['auth:admin', 'admin'])->prefix('admin')->name('admin.')->gro
     Route::put('/users/{user}/password', [UserController::class, 'updatePassword'])
         ->whereNumber('user')
         ->name('users.password');
+
+    Route::prefix('customers/{customer}')
+        ->whereNumber('customer')
+        ->middleware('customer-portal')
+        ->name('customers.')
+        ->group(function () {
+            Route::get('/dashboard', CustomerDashboardController::class)->name('dashboard');
+            Route::get('/tree', CustomerTreeController::class)->name('tree');
+            Route::get('/tree/{id}', [CustomerTreeController::class, 'show'])->whereNumber('id')->name('tree.show');
+            Route::get('/withdrawals/history', [CustomerWithdrawalController::class, 'history'])->name('withdrawals.history');
+            Route::get('/income/history', [CustomerIncomeController::class, 'history'])->name('income.history');
+        });
 
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/payments/start', [PaymentController::class, 'start'])->name('payments.start');

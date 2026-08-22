@@ -55,13 +55,15 @@
             </div>
         </div>
         <div class="mt-6 flex flex-wrap gap-2">
-            <a href="{{ route('customer.withdrawals.create') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white text-primary font-semibold text-sm hover:bg-white/90 transition-colors">
+            @if (empty($isAdminView))
+            <a href="{{ customer_portal_route('withdrawals.create') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white text-primary font-semibold text-sm hover:bg-white/90 transition-colors">
                 <i class="ph ph-hand-withdraw"></i> Withdraw
             </a>
-            <a href="{{ route('customer.income.history') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white/10 text-white border border-white/25 text-sm font-medium hover:bg-white/15 transition-colors">
+            @endif
+            <a href="{{ customer_portal_route('income.history') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white/10 text-white border border-white/25 text-sm font-medium hover:bg-white/15 transition-colors">
                 <i class="ph ph-chart-line-up"></i> Income
             </a>
-            <a href="{{ route('customer.tree') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white/10 text-white border border-white/25 text-sm font-medium hover:bg-white/15 transition-colors">
+            <a href="{{ customer_portal_route('tree') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white/10 text-white border border-white/25 text-sm font-medium hover:bg-white/15 transition-colors">
                 <i class="ph ph-tree-structure"></i> My Tree
             </a>
         </div>
@@ -70,8 +72,8 @@
     <section class="cmc-panel p-5 flex flex-col justify-between">
         <div>
             <span class="cmc-chip mb-3"><i class="ph ph-package"></i> Active package</span>
-            <p class="text-3xl font-bold text-heading">${{ number_format((float) ($user->package->amount ?? 0), 2) }}</p>
-            <p class="text-sm text-muted mt-1">{{ $user->package->name ?? 'No package' }}</p>
+            <p class="text-3xl font-bold text-heading">${{ number_format((float) ($user->package?->amount ?? 0), 2) }}</p>
+            <p class="text-sm text-muted mt-1">{{ $user->package?->name ?? 'No package' }}</p>
         </div>
         <div class="mt-5 grid grid-cols-2 gap-3">
             <div class="rounded-xl bg-primary/5 border border-primary/15 p-3">
@@ -124,7 +126,7 @@
         ['Today Referral', '$'.$referralToday, 'ph-users', 'is-warn'],
         ['Overall Referral', '$'.$referralTotal, 'ph-users-three', 'is-warn'],
         ['Customer ID', (string) $user->id, 'ph-identification-badge', ''],
-        ['Package', '$'.number_format((float) ($user->package->amount ?? 0), 2), 'ph-package', ''],
+        ['Package', '$'.number_format((float) ($user->package?->amount ?? 0), 2), 'ph-package', ''],
     ] as [$label, $value, $icon, $tone])
     <div class="cmc-stat-card {{ $tone }} p-4">
         <div class="flex items-center justify-between mb-3">
@@ -175,7 +177,8 @@
         </div>
     </div>
     <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-        <a href="{{ route('customer.withdrawals.create') }}" class="cmc-quick-link">
+        @if (empty($isAdminView))
+        <a href="{{ customer_portal_route('withdrawals.create') }}" class="cmc-quick-link">
             <span class="cmc-ql-icon"><i class="ph ph-hand-withdraw"></i></span>
             <div class="min-w-0">
                 <p class="text-sm font-semibold text-heading">Request withdrawal</p>
@@ -183,7 +186,8 @@
             </div>
             <i class="ph ph-caret-right text-muted ml-auto"></i>
         </a>
-        <a href="{{ route('customer.tree') }}" class="cmc-quick-link">
+        @endif
+        <a href="{{ customer_portal_route('tree') }}" class="cmc-quick-link">
             <span class="cmc-ql-icon"><i class="ph ph-tree-structure"></i></span>
             <div class="min-w-0">
                 <p class="text-sm font-semibold text-heading">Grow your tree</p>
@@ -191,7 +195,7 @@
             </div>
             <i class="ph ph-caret-right text-muted ml-auto"></i>
         </a>
-        <a href="{{ route('customer.income.history') }}" class="cmc-quick-link">
+        <a href="{{ customer_portal_route('income.history') }}" class="cmc-quick-link">
             <span class="cmc-ql-icon"><i class="ph ph-chart-line-up"></i></span>
             <div class="min-w-0">
                 <p class="text-sm font-semibold text-heading">Income ledger</p>

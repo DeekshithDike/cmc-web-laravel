@@ -9,3 +9,10 @@ if (! function_exists('asset_ver')) {
         return asset($path).'?v='.$version;
     }
 }
+
+if (! function_exists('customer_portal_route')) {
+    function customer_portal_route(string $name, mixed ...$parameters): string
+    {
+        return \App\Support\CustomerPortal::route($name, ...$parameters);
+    }
+}

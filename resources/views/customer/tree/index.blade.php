@@ -49,6 +49,7 @@
 @endpush
 @section('content')
 @php
+    $isAdminView = ! empty($isAdminView);
     $whatsappInvite = function (int $placementId, string $position) use ($inviteBase, $brand): string {
         $link = $inviteBase.'?placementID='.$placementId.'&position='.$position;
         $text = 'Use my referral link to join '.$brand.'. '.$link;
@@ -70,7 +71,7 @@
         if (! $node) {
             return '';
         }
-        $url = route('customer.tree.show', $node->users_id);
+        $url = customer_portal_route('tree.show', $node->users_id);
         $icon = $nodeIconClass($node);
         $amount = $node->amount
             ? '<br>$ '.number_format((float) $node->amount)
@@ -82,7 +83,13 @@
             .'</a>';
     };
 
-    $renderAdd = function (int $placementId, string $position) use ($whatsappInvite): string {
+    $renderAdd = function (int $placementId, string $position) use ($whatsappInvite, $isAdminView): string {
+        if ($isAdminView) {
+            return '<div class="cmc-tree-node">'
+                .'<i class="fa fa-user tree-user-icon text-muted"></i>'
+                .'</div>';
+        }
+
         $url = $whatsappInvite($placementId, $position);
 
         return '<a target="_blank" rel="noopener" href="'.e($url).'" class="cmc-tree-node">'

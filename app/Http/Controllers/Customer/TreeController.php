@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BinaryTree;
 use App\Models\User;
 use App\Services\Business\BusinessVolumeService;
+use App\Support\CustomerPortal;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -14,14 +15,14 @@ class TreeController extends Controller
 {
     public function __invoke(Request $request, BusinessVolumeService $volumes): View
     {
-        return $this->renderTree((int) $request->user('customer')->id, true, $volumes);
+        return $this->renderTree((int) CustomerPortal::member($request)->id, true, $volumes);
     }
 
-    public function show(Request $request, int $id, BusinessVolumeService $volumes): View
+    public function show(Request $request, BusinessVolumeService $volumes): View
     {
-        $viewerId = (int) $request->user('customer')->id;
+        $viewerId = (int) CustomerPortal::member($request)->id;
         $target = User::query()
-            ->whereKey($id)
+            ->whereKey((int) $request->route('id'))
             ->where('role', UserRole::Customer)
             ->firstOrFail();
 

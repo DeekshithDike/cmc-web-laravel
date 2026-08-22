@@ -31,6 +31,7 @@
                         <td>{{ \App\Support\IncomeCalendar::formatDate($user->expiry_date) }}</td>
                         <td class="text-right">
                             @include('admin.partials.row-actions', ['actions' => [
+                                ['label' => 'Dashboard', 'url' => route('admin.customers.dashboard', $user), 'icon' => 'fa-th-large', 'target' => '_blank'],
                                 ['label' => 'Verify', 'url' => route('admin.verification.index', ['q' => $user->id]), 'icon' => 'fa-search'],
                                 ['label' => 'Edit', 'url' => route('admin.users.edit', $user), 'icon' => 'fa-pencil'],
                             ]])

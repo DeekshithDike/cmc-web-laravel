@@ -35,6 +35,11 @@ class AdminUserEditTest extends TestCase
 
         $this->assertStringContainsString(route('admin.users.edit', $this->root, false), $html);
         $this->assertStringContainsString('> Edit</a>', $html);
+        $this->assertStringContainsString(
+            'href="'.route('admin.customers.dashboard', $this->root).'" target="_blank" rel="noopener"',
+            $html
+        );
+        $this->assertStringContainsString('> Dashboard</a>', $html);
     }
 
     public function test_admin_can_open_edit_page_with_editable_and_readonly_fields(): void

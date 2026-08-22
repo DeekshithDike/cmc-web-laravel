@@ -9,10 +9,12 @@ use App\Services\Calc\HttpCalcClient;
 use App\Services\Payments\NowPayments\NowPaymentsClient;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Payouts\PayoutGatewayManager;
+use App\Support\CustomerPortal;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -38,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFour();
+
+        View::composer(['layouts.customer', 'customer.*'], function ($view) {
+            $request = request();
+            $view->with([
+                'isAdminView' => CustomerPortal::isAdminView($request),
+                'portalMember' => $request->attributes->get(CustomerPortal::ATTRIBUTE) ?? $request->user('customer'),
+            ]);
+        });
 
         RateLimiter::for('login', function (Request $request) {
             $identity = strtolower((string) $request->input('email', $request->input('login_id', 'guest')));

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Withdrawal;
 use App\Services\Withdrawals\WithdrawalService;
+use App\Support\CustomerPortal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -41,7 +42,7 @@ class WithdrawalController extends Controller
     public function history(Request $request): View
     {
         $withdrawals = Withdrawal::query()
-            ->where('user_id', $request->user('customer')->id)
+            ->where('user_id', CustomerPortal::member($request)->id)
             ->latest()
             ->paginate(25);
 
