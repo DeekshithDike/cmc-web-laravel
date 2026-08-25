@@ -11,8 +11,8 @@ return [
         'country' => 'Malaysia',
         'country_code' => 'MY',
         'title' => env('SEO_TITLE', 'City Max Crypto | Daily ROI & USDT Packages in Malaysia'),
-        'description' => env('SEO_DESCRIPTION', 'City Max Crypto is a Malaysia crypto platform with USDT packages, 1% daily ROI, referral and binary income, and fast USDT withdrawals on TRC20 and BEP20.'),
-        'keywords' => env('SEO_KEYWORDS', 'City Max Crypto, CityMax, CityMax Crypto, City Max, citymax, citymax crypto Malaysia, crypto Malaysia, USDT Malaysia, Kuala Lumpur crypto, daily ROI, binary income, referral income, USDT TRC20, USDT BEP20'),
+        'description' => env('SEO_DESCRIPTION', 'City Max Crypto is a Malaysia crypto platform with USDT packages, 1% daily ROI, referral and binary income, and fast USDT withdrawals on BEP20.'),
+        'keywords' => env('SEO_KEYWORDS', 'City Max Crypto, CityMax, CityMax Crypto, City Max, citymax, citymax crypto Malaysia, crypto Malaysia, USDT Malaysia, Kuala Lumpur crypto, daily ROI, binary income, referral income, USDT BEP20'),
     ],
 
     'calc' => [

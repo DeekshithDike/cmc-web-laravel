@@ -95,7 +95,7 @@ class NowPaymentsPayoutGateway implements PayoutGatewayInterface
                 'payout_description' => 'City Max Crypto withdrawal #'.$withdrawal->id,
             ];
             // extra_id is a blockchain memo/destination tag (XRP, XLM, TON, …).
-            // USDT TRC-20 / BEP-20 do not use it; sending our withdrawal id is rejected as
+            // USDT BEP-20 does not use it; sending our withdrawal id is rejected as
             // "Invalid payout extra ID: USDTBSC <address> <id>".
             $memo = trim((string) ($meta['extra_id'] ?? $withdrawal->meta['extra_id'] ?? ''));
             if ($memo !== '') {

@@ -143,11 +143,10 @@
                     <img src="{{ asset('landing/img/images/exchange_img.png') }}" alt="" width="56" height="56" loading="lazy" decoding="async">
                     <div>
                         <h3>Payment <span>method</span></h3>
-                        <p>Deposits and withdrawals are processed in USDT on major networks.</p>
+                        <p>Deposits and withdrawals are processed in USDT BEP20 (BNB Smart Chain).</p>
                     </div>
                 </div>
                 <div class="pay-chips">
-                    <span class="pay-chip">USDT (TRC20)</span>
                     <span class="pay-chip">USDT (BEP20 / BSC)</span>
                 </div>
             </div>
@@ -186,7 +185,7 @@
                     <img src="{{ asset('landing/img/icon/features_icon04.png') }}" alt="" width="52" height="52" loading="lazy" decoding="async">
                     <div>
                         <h3>Secure <span>crypto rails</span></h3>
-                        <p>USDT settlements on TRC20 and BEP20 for transparent transfers.</p>
+                        <p>USDT settlements on BEP20 (BNB Smart Chain) for transparent transfers.</p>
                     </div>
                 </article>
                 <article class="feature compact">
@@ -219,7 +218,7 @@
                     <article class="step">
                         <div class="num">02</div>
                         <h3>Activate with <span>USDT</span></h3>
-                        <p>Complete payment on TRC20 or BEP20 and activate your account.</p>
+                        <p>Complete payment in USDT BEP20 and activate your account.</p>
                     </article>
                     <article class="step">
                         <div class="num">03</div>

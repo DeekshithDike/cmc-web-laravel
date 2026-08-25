@@ -22,6 +22,7 @@ class UsdtWalletAddress
 
     /**
      * USDT on Tron (TRC-20) uses a Base58 address starting with T (34 chars).
+     * Kept for historical withdrawal display only — new requests must be BEP-20.
      */
     public static function isTrc20(string $address): bool
     {
@@ -30,30 +31,30 @@ class UsdtWalletAddress
 
     public static function isSupported(string $address): bool
     {
-        return self::isTrc20($address) || self::isBep20($address);
+        return self::isBep20($address);
     }
 
     public static function network(string $address): ?string
     {
-        if (self::isTrc20($address)) {
-            return self::NETWORK_TRC20;
-        }
-
         if (self::isBep20($address)) {
             return self::NETWORK_BEP20;
+        }
+
+        if (self::isTrc20($address)) {
+            return self::NETWORK_TRC20;
         }
 
         return null;
     }
 
     /**
-     * NOWPayments ticker for this address: usdttrc20 or usdtbsc.
+     * NOWPayments ticker for this address: usdtbsc (new payouts) or usdttrc20 (legacy rows).
      */
     public static function nowPaymentsCurrency(string $address): ?string
     {
         return match (self::network($address)) {
-            self::NETWORK_TRC20 => strtolower((string) config('payments.nowpayments.payout_currency_trc20', 'usdttrc20')),
             self::NETWORK_BEP20 => strtolower((string) config('payments.nowpayments.payout_currency_bep20', 'usdtbsc')),
+            self::NETWORK_TRC20 => strtolower((string) config('payments.nowpayments.payout_currency_trc20', 'usdttrc20')),
             default => null,
         };
     }

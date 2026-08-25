@@ -33,10 +33,11 @@ class WithdrawalService
         }
 
         $walletAddress = trim($walletAddress);
-        $network = UsdtWalletAddress::network($walletAddress);
-        if ($network === null) {
-            throw new InvalidArgumentException('Wallet address must be USDT TRC-20 (starts with T) or BEP-20 (0x followed by 40 hex characters).');
+        if (! UsdtWalletAddress::isSupported($walletAddress)) {
+            throw new InvalidArgumentException('Wallet address must be USDT BEP-20 (0x followed by 40 hex characters). TRC-20 is not supported.');
         }
+
+        $network = UsdtWalletAddress::network($walletAddress);
 
         $payoutCurrency = UsdtWalletAddress::nowPaymentsCurrency($walletAddress);
 

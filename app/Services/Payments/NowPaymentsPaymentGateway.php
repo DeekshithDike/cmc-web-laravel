@@ -72,6 +72,7 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
             $payload = [
                 'price_amount' => (float) $amount,
                 'price_currency' => strtolower((string) config('payments.nowpayments.price_currency')),
+                'pay_currency' => strtolower((string) config('payments.nowpayments.pay_currency', 'usdtbsc')),
                 'order_id' => $orderId,
                 'order_description' => $meta['description'] ?? ('City Max Crypto package #'.($transaction->package_id ?? '')),
                 'ipn_callback_url' => $ipnUrl,

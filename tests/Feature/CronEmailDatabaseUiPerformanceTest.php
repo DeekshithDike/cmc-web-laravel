@@ -276,8 +276,9 @@ class CronEmailDatabaseUiPerformanceTest extends TestCase
             ->assertOk()
             ->assertSee('Minimum $10.00', false)
             ->assertSee('Fee $2.00', false)
-            ->assertSee('TRC-20', false)
-            ->assertSee('BEP-20', false);
+            ->assertSee('BEP-20', false)
+            ->assertDontSee('TRC-20 or BEP-20', false)
+            ->assertSee('USDT BEP-20 only', false);
 
         $this->actingAs($this->root)->get(route('customer.income.history'))
             ->assertOk()

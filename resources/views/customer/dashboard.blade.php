@@ -51,7 +51,7 @@
                         <i class="ph ph-currency-circle-dollar"></i> USDT
                     </span>
                 </p>
-                <p class="text-xs text-white/70 mt-1.5">TRC-20 / BEP-20</p>
+                <p class="text-xs text-white/70 mt-1.5">BEP-20 USDT</p>
             </div>
         </div>
         <div class="mt-6 flex flex-wrap gap-2">

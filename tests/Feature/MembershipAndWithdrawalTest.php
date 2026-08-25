@@ -94,20 +94,16 @@ class MembershipAndWithdrawalTest extends TestCase
         ])->assertRedirect()->assertSessionHas('error');
     }
 
-    public function test_withdrawal_accepts_trc20_and_bep20_addresses(): void
+    public function test_withdrawal_rejects_trc20_and_accepts_bep20_addresses(): void
     {
         ['root' => $root] = $this->seedRoot();
 
-        $this->actingAs($root)->post(route('customer.withdrawals.store'), [
+        $this->actingAs($root)->from(route('customer.withdrawals.create'))->post(route('customer.withdrawals.store'), [
             'amount' => 25,
             'wallet_address' => 'TEmGwPeRTPiLFLVfBxXkSP91yc5GMNQhfS',
-        ])->assertRedirect(route('customer.withdrawals.history'));
+        ])->assertRedirect()->assertSessionHas('error');
 
-        $trc = Withdrawal::query()->latest('id')->firstOrFail();
-        $this->assertSame('trc20', $trc->meta['network'] ?? null);
-        $this->assertSame('usdttrc20', $trc->meta['payout_currency'] ?? null);
-
-        $root->update(['wallet_balance' => '100.00']);
+        $this->assertDatabaseCount('withdrawals', 0);
 
         $this->actingAs($root)->post(route('customer.withdrawals.store'), [
             'amount' => 25,

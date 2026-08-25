@@ -12,9 +12,9 @@
         <div class="mt-5 space-y-2 text-sm text-white/80">
             <p class="inline-flex items-center gap-2"><i class="ph ph-shield-check"></i> Secure USDT payout</p>
             <p class="inline-flex items-center gap-2"><i class="ph ph-clock"></i> Processed after review</p>
-            <p class="inline-flex items-center gap-2"><i class="ph ph-currency-circle-dollar"></i> USDT TRC-20 or BEP-20</p>
+            <p class="inline-flex items-center gap-2"><i class="ph ph-currency-circle-dollar"></i> USDT BEP-20 only</p>
         </div>
-        <p class="mt-4 text-xs text-white/70 leading-relaxed">Paste your own USDT address. We detect the network from the address — you do not select TRC-20 or BEP-20.</p>
+        <p class="mt-4 text-xs text-white/70 leading-relaxed">Paste your own BEP-20 USDT address on BNB Smart Chain. TRC-20 and Ethereum ERC-20 are not supported.</p>
     </section>
 
     <section class="cmc-panel lg:col-span-3 p-6">
@@ -26,17 +26,11 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-            <div class="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                <p class="text-xs font-semibold text-heading mb-1"><i class="ph ph-check-circle text-primary"></i> TRC-20 (Tron)</p>
-                <p class="text-[11px] text-muted m-0 leading-relaxed">Starts with <code class="text-heading">T</code> and is 34 characters. Example: <code class="break-all text-heading">TEmGw…hfS</code></p>
-            </div>
-            <div class="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                <p class="text-xs font-semibold text-heading mb-1"><i class="ph ph-check-circle text-primary"></i> BEP-20 (BNB Smart Chain)</p>
-                <p class="text-[11px] text-muted m-0 leading-relaxed">Starts with <code class="text-heading">0x</code> and is 42 characters. Use a BSC USDT address, not Ethereum.</p>
-            </div>
+        <div class="rounded-xl border border-primary/20 bg-primary/5 p-3 mb-5">
+            <p class="text-xs font-semibold text-heading mb-1"><i class="ph ph-check-circle text-primary"></i> BEP-20 (BNB Smart Chain)</p>
+            <p class="text-[11px] text-muted m-0 leading-relaxed">Starts with <code class="text-heading">0x</code> and is 42 characters. Use a BSC USDT address, not Ethereum or Tron.</p>
         </div>
-        <p class="text-[11px] text-muted mb-4 leading-relaxed"><i class="ph ph-warning text-danger"></i> We do not pay Ethereum ERC-20. An <code>0x</code> address is sent as BEP-20. A wrong network can lose funds.</p>
+        <p class="text-[11px] text-muted mb-4 leading-relaxed"><i class="ph ph-warning text-danger"></i> We pay USDT BEP-20 only. A TRC-20 (<code>T…</code>) or Ethereum ERC-20 address can lose funds.</p>
 
         <form method="POST" action="{{ route('customer.withdrawals.store') }}" class="space-y-4">
             @csrf
@@ -49,12 +43,12 @@
                 <p class="text-[11px] text-muted mt-1.5">You receive this amount minus the ${{ number_format((float) $fee, 2) }} fee.</p>
             </div>
             <div>
-                <label class="block text-xs font-medium text-text-secondary mb-1.5">Your USDT wallet address</label>
+                <label class="block text-xs font-medium text-text-secondary mb-1.5">Your USDT BEP-20 wallet address</label>
                 <div class="relative">
                     <i class="ph ph-wallet absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
-                    <input id="wd-address" type="text" name="wallet_address" value="{{ old('wallet_address') }}" required spellcheck="false" autocomplete="off" placeholder="Paste TRC-20 (T…) or BEP-20 (0x…) address" class="w-full h-11 pl-9 pr-3 rounded-xl bg-subtle border border-border text-sm text-text focus:outline-none focus:border-primary font-mono">
+                    <input id="wd-address" type="text" name="wallet_address" value="{{ old('wallet_address') }}" required spellcheck="false" autocomplete="off" placeholder="Paste BEP-20 (0x…) address" class="w-full h-11 pl-9 pr-3 rounded-xl bg-subtle border border-border text-sm text-text focus:outline-none focus:border-primary font-mono">
                 </div>
-                <p id="wd-network" class="text-[11px] text-muted mt-1.5" role="status">Paste an address to see TRC-20 or BEP-20.</p>
+                <p id="wd-network" class="text-[11px] text-muted mt-1.5" role="status">Paste a BEP-20 USDT address starting with 0x.</p>
             </div>
             <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-11 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-strong transition-colors">
                 Withdraw Now <i class="ph ph-arrow-right"></i>
@@ -79,12 +73,12 @@
         hint.classList.remove('text-success', 'text-danger', 'text-muted');
         if (!value) {
             hint.classList.add('text-muted');
-            hint.textContent = 'Paste an address to see TRC-20 or BEP-20.';
+            hint.textContent = 'Paste a BEP-20 USDT address starting with 0x.';
             return;
         }
         if (trc20.test(value)) {
-            hint.classList.add('text-success');
-            hint.textContent = 'Detected: USDT TRC-20 (Tron).';
+            hint.classList.add('text-danger');
+            hint.textContent = 'TRC-20 is not supported. Use a BEP-20 (BNB Smart Chain) USDT address.';
             return;
         }
         if (bep20.test(value)) {
@@ -93,7 +87,7 @@
             return;
         }
         hint.classList.add('text-danger');
-        hint.textContent = 'Not a valid TRC-20 or BEP-20 USDT address.';
+        hint.textContent = 'Not a valid BEP-20 USDT address.';
     };
 
     input.addEventListener('input', paint);

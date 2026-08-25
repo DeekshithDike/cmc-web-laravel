@@ -145,7 +145,7 @@ class PaymentGatewayScenariosTest extends TestCase
             'payments.nowpayments.password' => 'np-pass',
             'payments.nowpayments.two_fa_secret' => 'JBSWY3DPEHPK3PXP',
             'payments.nowpayments.validate_payout_address' => true,
-            'payments.nowpayments.payout_currency' => 'usdttrc20',
+            'payments.nowpayments.payout_currency' => 'usdtbsc',
             'payments.nowpayments.payout_fiat_currency' => 'usd',
         ]);
     }
@@ -201,6 +201,16 @@ class PaymentGatewayScenariosTest extends TestCase
 
         $tx = $result['transaction'];
         $this->assertSame('https://nowpayments.io/payment/?iid=4522625843', $result['redirect_url']);
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/invoice')) {
+                return false;
+            }
+
+            $data = $request->data();
+
+            return ($data['pay_currency'] ?? null) === 'usdtbsc'
+                && ($data['price_currency'] ?? null) === 'usd';
+        });
         $this->assertDatabaseHas('payment_transactions', [
             'id' => $tx->id,
             'user_id' => $user->id,

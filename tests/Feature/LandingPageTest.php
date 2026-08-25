@@ -48,7 +48,11 @@ class LandingPageTest extends TestCase
         $response->assertSee('Tue–Sat', false);
         $response->assertSee('10% daily', false);
         $response->assertSee('5% matching', false);
-        $response->assertSee('USDT (TRC20)', false);
+        $response->assertSee('USDT (BEP20 / BSC)', false);
+        $response->assertDontSee('USDT (TRC20)', false);
+        $response->assertDontSee('TRC20 or BEP20', false);
+        $response->assertSee('fast USDT withdrawals on BEP20', false);
+        $response->assertSee('USDT BEP20', false);
         $response->assertSee('support@citymaxcrypto.com', false);
         $response->assertSee('landing/css/landing.css', false);
         $response->assertDontSee('fonts.bunny.net', false);
