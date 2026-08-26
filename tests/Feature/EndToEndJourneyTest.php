@@ -8,8 +8,10 @@ use App\Enums\UserStatus;
 use App\Enums\WithdrawalStatus;
 use App\Models\BinaryTree;
 use App\Models\Package;
+use App\Models\PaymentDetail;
 use App\Models\PaymentTransaction;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use App\Models\Withdrawal;
 use App\Services\Income\DailyIncomeService;
 use App\Services\Payments\PaymentService;
@@ -210,11 +212,47 @@ class EndToEndJourneyTest extends TestCase
         $this->actingAs($this->root)->get(route('customer.income.history'))->assertOk();
         $this->actingAs($this->root)->get(route('customer.withdrawals.create'))->assertOk();
 
-        // 8) Daily income ROI credit
+        // 8) Daily income ROI credit, then a $0 weekend ledger row on history
         $before = (float) $this->root->fresh()->wallet_balance;
         $result = app(DailyIncomeService::class)->run(now()->toDateString());
         $this->assertGreaterThanOrEqual(1, $result['processed']);
         $this->assertGreaterThan($before, (float) $this->root->fresh()->wallet_balance);
+
+        $weekend = '2026-08-15';
+        $afterWeekday = number_format((float) $this->root->fresh()->wallet_balance, 2, '.', '');
+        $incomeCredits = WalletTransaction::query()
+            ->where('user_id', $this->root->id)
+            ->whereIn('reason', ['daily_roi', 'daily_binary', 'daily_referral'])
+            ->count();
+        $weekendRun = app(DailyIncomeService::class)->run($weekend);
+        $this->assertFalse($weekendRun['skipped']);
+        $this->assertSame('0.00', $weekendRun['total']);
+        $this->assertEquals($afterWeekday, number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+        $this->assertSame(
+            $incomeCredits,
+            WalletTransaction::query()
+                ->where('user_id', $this->root->id)
+                ->whereIn('reason', ['daily_roi', 'daily_binary', 'daily_referral'])
+                ->count()
+        );
+        $zeroRow = PaymentDetail::query()
+            ->where('user_id', $this->root->id)
+            ->whereDate('paid_on', $weekend)
+            ->firstOrFail();
+        $this->assertSame('0.00', number_format((float) $zeroRow->total_amount, 2, '.', ''));
+
+        $this->actingAs($this->root)
+            ->get(route('customer.income.history'))
+            ->assertOk()
+            ->assertSee('14 Aug 2026', false)
+            ->assertSee('15 Aug 2026', false)
+            ->assertSee('$0.00', false);
+        $this->actingAs($this->admin)
+            ->get(route('admin.income.daily'))
+            ->assertOk()
+            ->assertSee('14 Aug 2026', false)
+            ->assertSee('15 Aug 2026', false)
+            ->assertSee('$0.00', false);
 
         // 9) Withdrawal request → admin complete (manual payout)
         config(['payments.default_payout' => 'manual']);

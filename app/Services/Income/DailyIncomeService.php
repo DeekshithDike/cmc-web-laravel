@@ -195,6 +195,76 @@ class DailyIncomeService
     }
 
     /**
+     * Insert $0 payment_details for eligible members on completed run days that have no ledger row.
+     * Does not credit wallets, re-pay binary/referral, or invent days that never ran.
+     *
+     * @return array{inserted: int, dates: list<string>, message: string}
+     */
+    public function backfillZeroLedger(?string $asOf = null): array
+    {
+        $dates = $asOf
+            ? collect([$asOf])
+            : DailyIncomeRun::query()
+                ->where('status', DailyIncomeRun::STATUS_COMPLETED)
+                ->orderBy('as_of')
+                ->pluck('as_of')
+                ->map(fn ($date) => $date instanceof \Illuminate\Support\Carbon ? $date->toDateString() : (string) $date);
+
+        $inserted = 0;
+        $filled = [];
+
+        foreach ($dates as $ymd) {
+            $run = DailyIncomeRun::query()->whereDate('as_of', $ymd)->first();
+            if (! $run || $run->status !== DailyIncomeRun::STATUS_COMPLETED) {
+                continue;
+            }
+
+            $dayInserted = 0;
+            User::query()
+                ->where('role', UserRole::Customer)
+                ->where('is_active', true)
+                ->where('payment_status', true)
+                ->whereDate('expiry_date', '>=', $ymd)
+                ->whereNotExists(function ($query) use ($ymd) {
+                    $query->selectRaw('1')
+                        ->from('payment_details')
+                        ->whereColumn('payment_details.user_id', 'users.id')
+                        ->whereDate('payment_details.paid_on', $ymd);
+                })
+                ->orderBy('id')
+                ->chunkById(200, function ($users) use ($ymd, &$dayInserted) {
+                    foreach ($users as $user) {
+                        PaymentDetail::query()->create([
+                            'user_id' => $user->id,
+                            'roi_amount' => '0.00',
+                            'binary_amount' => '0.00',
+                            'referral_amount' => '0.00',
+                            'total_amount' => '0.00',
+                            'paid_on' => $ymd,
+                        ]);
+                        $dayInserted++;
+                    }
+                });
+
+            if ($dayInserted > 0) {
+                $run->update([
+                    'processed' => PaymentDetail::query()->whereDate('paid_on', $ymd)->count(),
+                ]);
+                $inserted += $dayInserted;
+                $filled[] = $ymd;
+            }
+        }
+
+        return [
+            'inserted' => $inserted,
+            'dates' => $filled,
+            'message' => $inserted > 0
+                ? "Inserted {$inserted} zero income row(s) for ".implode(', ', $filled).'. Wallets were not credited.'
+                : 'No missing zero income rows.',
+        ];
+    }
+
+    /**
      * @return array{skipped: bool, run?: DailyIncomeRun, result?: array{processed: int, total: string, asOf: string, skipped: bool, message: string}}
      */
     private function claimRun(string $asOf, string $triggeredBy): array
@@ -231,7 +301,7 @@ class DailyIncomeService
         });
     }
 
-    private function payUserForDay(User $user, string $asOf, float $binaryPercent, float $referralPercent): ?string
+    private function payUserForDay(User $user, string $asOf, float $binaryPercent, float $referralPercent): string
     {
         $packageAmount = (float) ($user->package->amount ?? 0);
         $roiPercent = (float) ($user->package->roi_percent ?? 0);
@@ -249,20 +319,13 @@ class DailyIncomeService
             ? round($referralVolume * ($referralPercent / 100), 2)
             : 0.0;
 
-        if ($roi <= 0 && $binary['pay'] <= 0 && $referralPay <= 0) {
-            if ($binary['left'] > 0 || $binary['right'] > 0) {
-                $this->storeCarry($user->id, $asOf, $binary['left_carry'], $binary['right_carry']);
-            }
-
-            return null;
-        }
-
         $roiFormatted = number_format($roi, 2, '.', '');
         $binaryFormatted = number_format($binary['pay'], 2, '.', '');
         $referralFormatted = number_format($referralPay, 2, '.', '');
         $walletCredit = bcadd(bcadd($roiFormatted, $binaryFormatted, 2), $referralFormatted, 2);
+        $hasMoney = $roi > 0 || $binary['pay'] > 0 || $referralPay > 0;
 
-        DB::transaction(function () use ($user, $asOf, $roiFormatted, $binaryFormatted, $referralFormatted, $walletCredit, $roi, $binary, $referralPay) {
+        DB::transaction(function () use ($user, $asOf, $roiFormatted, $binaryFormatted, $referralFormatted, $walletCredit, $roi, $binary, $referralPay, $hasMoney) {
             PaymentDetail::query()->create([
                 'user_id' => $user->id,
                 'roi_amount' => $roiFormatted,
@@ -291,7 +354,9 @@ class DailyIncomeService
                 $this->wallet->credit($user, $referralPay, 'daily_referral');
             }
 
-            $this->storeCarry($user->id, $asOf, $binary['left_carry'], $binary['right_carry']);
+            if ($hasMoney || $binary['left'] > 0 || $binary['right'] > 0) {
+                $this->storeCarry($user->id, $asOf, $binary['left_carry'], $binary['right_carry']);
+            }
         });
 
         return $walletCredit;

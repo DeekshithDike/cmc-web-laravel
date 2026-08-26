@@ -386,11 +386,18 @@ class MoneyPathAndIncomeTest extends TestCase
         $before = number_format((float) $this->root->wallet_balance, 2, '.', '');
 
         foreach (['2026-08-15', '2026-08-16'] as $asOf) {
-            app(DailyIncomeService::class)->run($asOf);
-            $this->assertSame(
-                0,
-                PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->count()
-            );
+            $result = app(DailyIncomeService::class)->run($asOf);
+            $this->assertSame('0.00', $result['total']);
+            $this->assertGreaterThanOrEqual(1, $result['processed']);
+
+            $row = PaymentDetail::query()
+                ->where('user_id', $this->root->id)
+                ->whereDate('paid_on', $asOf)
+                ->firstOrFail();
+            $this->assertSame('0.00', number_format((float) $row->roi_amount, 2, '.', ''));
+            $this->assertSame('0.00', number_format((float) $row->binary_amount, 2, '.', ''));
+            $this->assertSame('0.00', number_format((float) $row->referral_amount, 2, '.', ''));
+            $this->assertSame('0.00', number_format((float) $row->total_amount, 2, '.', ''));
             $this->assertSame(
                 0,
                 WalletTransaction::query()->where('user_id', $this->root->id)->where('reason', 'daily_roi')->count()
@@ -398,6 +405,81 @@ class MoneyPathAndIncomeTest extends TestCase
         }
 
         $this->assertEquals($before, number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+    }
+
+    public function test_zero_income_day_shows_on_customer_and_admin_history(): void
+    {
+        $asOf = '2026-08-15';
+        $before = number_format((float) $this->root->wallet_balance, 2, '.', '');
+
+        $result = app(DailyIncomeService::class)->run($asOf);
+        $this->assertFalse($result['skipped']);
+        $this->assertSame('0.00', $result['total']);
+        $this->assertEquals($before, number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+        $this->assertSame(0, WalletTransaction::query()->where('user_id', $this->root->id)->whereIn('reason', [
+            'daily_roi',
+            'daily_binary',
+            'daily_referral',
+        ])->count());
+
+        $this->actingAs($this->root)
+            ->get(route('customer.income.history'))
+            ->assertOk()
+            ->assertSee('15 Aug 2026', false)
+            ->assertSee('$0.00', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.income.daily'))
+            ->assertOk()
+            ->assertSee('15 Aug 2026', false)
+            ->assertSee('$0.00', false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.customers.income.history', $this->root))
+            ->assertOk()
+            ->assertSee('15 Aug 2026', false)
+            ->assertSee('$0.00', false);
+
+        $again = app(DailyIncomeService::class)->run($asOf);
+        $this->assertTrue($again['skipped']);
+        $this->assertSame(1, PaymentDetail::query()->where('user_id', $this->root->id)->whereDate('paid_on', $asOf)->count());
+        $this->assertEquals($before, number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+    }
+
+    public function test_backfill_zero_ledger_fills_completed_runs_without_crediting_wallets(): void
+    {
+        DailyIncomeRun::query()->create([
+            'as_of' => '2026-08-08',
+            'status' => DailyIncomeRun::STATUS_COMPLETED,
+            'triggered_by' => 'admin',
+            'processed' => 0,
+            'total_paid' => '0.00',
+        ]);
+        $before = number_format((float) $this->root->wallet_balance, 2, '.', '');
+
+        $this->artisan('income:backfill-zero-ledger', ['--date' => '2026-08-08'])
+            ->expectsOutputToContain('Inserted')
+            ->assertSuccessful();
+
+        $row = PaymentDetail::query()
+            ->where('user_id', $this->root->id)
+            ->whereDate('paid_on', '2026-08-08')
+            ->firstOrFail();
+        $this->assertSame('0.00', number_format((float) $row->total_amount, 2, '.', ''));
+        $this->assertEquals($before, number_format((float) $this->root->fresh()->wallet_balance, 2, '.', ''));
+        $this->assertSame(0, WalletTransaction::query()->where('user_id', $this->root->id)->count());
+        $this->assertSame(
+            1,
+            DailyIncomeRun::query()->whereDate('as_of', '2026-08-08')->where('processed', '>=', 1)->count()
+        );
+
+        $this->artisan('income:backfill-zero-ledger', ['--date' => '2026-08-08'])
+            ->expectsOutputToContain('No missing zero income rows')
+            ->assertSuccessful();
+
+        $this->artisan('income:backfill-zero-ledger', ['--date' => '2026-08-14'])
+            ->expectsOutputToContain('No missing zero income rows')
+            ->assertSuccessful();
     }
 
     public function test_roi_is_paid_on_monday(): void
