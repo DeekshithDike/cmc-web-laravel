@@ -30,7 +30,8 @@ class UserController extends Controller
             ->when($packageId > 0, fn ($query) => $query->where('package_id', $packageId))
             ->tap(fn ($query) => AdminList::applySearch($query, $q, ['name', 'email', 'phone']))
             ->with('package:id,name')
-            ->latest('id')
+            ->latest('created_at')
+            ->orderByDesc('id')
             ->paginate(AdminList::perPage($request))
             ->withQueryString();
 

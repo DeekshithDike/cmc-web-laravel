@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Services\Calc\CalcDispatcher;
 use App\Services\Business\BusinessVolumeService;
 use App\Services\Income\ReferralBonusService;
-use App\Support\PostgresIdSequences;
+use App\Support\CustomerIdGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -31,7 +31,7 @@ class MembershipService
      */
     public function createActiveMember(array $data, bool $notifyCalc = true): User
     {
-        $user = PostgresIdSequences::run(fn () => DB::transaction(function () use ($data) {
+        $user = CustomerIdGenerator::run(fn (int $id) => DB::transaction(function () use ($data, $id) {
             $package = Package::query()->whereKey($data['package_id'])->where('is_active', true)->firstOrFail();
             $parent = User::query()->whereKey($data['parent_id'])->where('role', UserRole::Customer)->firstOrFail();
             $sponsor = User::query()->whereKey($data['sponsor_id'])->where('role', UserRole::Customer)->firstOrFail();
@@ -41,7 +41,8 @@ class MembershipService
 
             $password = $data['password'] ?? $this->generatePassword();
 
-            $user = User::query()->create([
+            $user = User::query()->forceCreate([
+                'id' => $id,
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => $password,
@@ -152,13 +153,14 @@ class MembershipService
 
     public function createPowerId(int $parentId, int $sponsorId, string $position, bool $notifyCalc = true): User
     {
-        $user = PostgresIdSequences::run(fn () => DB::transaction(function () use ($parentId, $sponsorId, $position) {
+        $user = CustomerIdGenerator::run(fn (int $id) => DB::transaction(function () use ($parentId, $sponsorId, $position, $id) {
             $parent = User::query()->whereKey($parentId)->where('role', UserRole::Customer)->firstOrFail();
             $sponsor = User::query()->whereKey($sponsorId)->where('role', UserRole::Customer)->firstOrFail();
             $pos = TreePosition::from($position);
             $this->assertSlotFree($parent->id, $pos);
 
-            $user = User::query()->create([
+            $user = User::query()->forceCreate([
+                'id' => $id,
                 'name' => 'Power ID',
                 'email' => 'power+'.Str::lower(Str::random(10)).'@citymax.local',
                 'password' => $this->generatePassword(),

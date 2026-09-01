@@ -42,7 +42,8 @@ class PowerIdController extends Controller
                         ->orWhere('email', 'like', $like);
                 });
             })
-            ->latest('id')
+            ->latest('created_at')
+            ->orderByDesc('id')
             ->paginate(AdminList::perPage($request))
             ->withQueryString();
 
