@@ -87,6 +87,11 @@ html.dark body.cmc-guest-body {
   pointer-events: none;
 }
 .cmc-hero-wallet > * { position: relative; z-index: 1; }
+.cmc-hero-metric {
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
 
 .cmc-roi-wallet {
   position: relative;

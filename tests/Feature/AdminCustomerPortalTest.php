@@ -87,6 +87,10 @@ class AdminCustomerPortalTest extends TestCase
             ->assertSee('My Tree', false)
             ->assertSee('Withdrawal History', false)
             ->assertSee('Income History', false)
+            ->assertSee('Share registration link', false)
+            ->assertSee('Without sponsor', false)
+            ->assertSee('With your sponsor ID', false)
+            ->assertSee('Total earned till today', false)
             ->getContent();
 
         $this->assertStringContainsString(route('admin.customers.tree', $this->root, false), $adminHtml);

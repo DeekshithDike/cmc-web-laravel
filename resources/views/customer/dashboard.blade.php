@@ -6,15 +6,17 @@
 @section('content')
 @php
     $malaysiaNow = now(\App\Support\IncomeCalendar::timezone());
+    $pendingLabel = $pendingWithdrawalCount === 1 ? '1 request' : $pendingWithdrawalCount.' requests';
+    $withdrawalTodayLabel = $withdrawalsTodayCount === 1 ? '1 request' : $withdrawalsTodayCount.' requests';
 @endphp
-<div class="mb-5 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-    <div class="flex items-center gap-3 min-w-0">
-        <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-white text-xl flex-shrink-0">
+<div class="mb-4 rounded-2xl border border-primary/40 bg-primary/10 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2.5 min-w-0">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-white text-lg flex-shrink-0">
             <i class="ph ph-clock"></i>
         </span>
         <div class="min-w-0">
             <p class="text-[11px] uppercase tracking-wider font-semibold text-primary">Server time · Malaysia</p>
-            <p id="cmc-server-clock" class="text-lg sm:text-xl font-bold text-heading tabular-nums" data-server-ms="{{ $malaysiaNow->getTimestampMs() }}">
+            <p id="cmc-server-clock" class="text-sm sm:text-base font-bold text-heading tabular-nums" data-server-ms="{{ $malaysiaNow->getTimestampMs() }}">
                 {{ $malaysiaNow->format('l, d F Y · h:i:s A') }}
             </p>
         </div>
@@ -54,10 +56,25 @@
                 <p class="text-xs text-white/70 mt-1.5">BEP-20 USDT</p>
             </div>
         </div>
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="cmc-hero-metric p-3">
+                <p class="text-[11px] uppercase tracking-wide text-white/65">Total earned till today</p>
+                <p class="text-xl font-bold mt-1 tabular-nums">${{ number_format((float) $earnedTotal, 2) }}</p>
+            </div>
+            <div class="cmc-hero-metric p-3">
+                <p class="text-[11px] uppercase tracking-wide text-white/65">Total withdrawn till today</p>
+                <p class="text-xl font-bold mt-1 tabular-nums">${{ number_format((float) $withdrawnTotal, 2) }}</p>
+            </div>
+            <div class="cmc-hero-metric p-3">
+                <p class="text-[11px] uppercase tracking-wide text-white/65">Pending withdrawal</p>
+                <p class="text-xl font-bold mt-1 tabular-nums">${{ number_format((float) $pendingWithdrawalAmount, 2) }}</p>
+                <p class="text-[11px] text-white/65 mt-0.5">{{ $pendingLabel }}</p>
+            </div>
+        </div>
         <div class="mt-6 flex flex-wrap gap-2">
             @if (empty($isAdminView))
             <a href="{{ customer_portal_route('withdrawals.create') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white text-primary font-semibold text-sm hover:bg-white/90 transition-colors">
-                <i class="ph ph-hand-withdraw"></i> Withdraw
+                <i class="ph ph-hand-withdraw"></i> Request withdrawal
             </a>
             @endif
             <a href="{{ customer_portal_route('income.history') }}" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-white/10 text-white border border-white/25 text-sm font-medium hover:bg-white/15 transition-colors">
@@ -88,6 +105,63 @@
     </section>
 </div>
 
+<section class="mb-6">
+    <div class="flex items-end justify-between gap-3 mb-3">
+        <div>
+            <h2 class="text-base font-semibold text-heading m-0">Today</h2>
+            <p class="text-xs text-muted m-0">Last credited income, today’s withdrawals, and today’s binary volume</p>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="cmc-stat-card is-accent p-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-medium text-muted">Last credited income</p>
+                <span class="cmc-stat-icon"><i class="ph ph-chart-line-up"></i></span>
+            </div>
+            <p class="text-2xl font-bold text-heading tracking-tight">${{ number_format((float) $lastIncome, 2) }}</p>
+            <p class="text-xs text-muted mt-1">
+                @if ($lastIncomeOn)
+                    {{ $lastIncomeOn }} · ROI ${{ $lastIncomeRoi }} · Binary ${{ $lastIncomeBinary }} · Referral ${{ $lastIncomeReferral }}
+                @else
+                    No income credited yet
+                @endif
+            </p>
+        </div>
+        <div class="cmc-stat-card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-medium text-muted">Withdrawals today</p>
+                <span class="cmc-stat-icon"><i class="ph ph-hand-withdraw"></i></span>
+            </div>
+            <p class="text-2xl font-bold text-heading tracking-tight">{{ $withdrawalsTodayCount }}</p>
+            <p class="text-xs text-muted mt-1">{{ $withdrawalTodayLabel }} · ${{ number_format((float) $withdrawalsTodayAmount, 2) }}</p>
+        </div>
+        <div class="cmc-stat-card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-medium text-muted">Today Left</p>
+                <span class="cmc-stat-icon"><i class="ph ph-arrow-fat-left"></i></span>
+            </div>
+            <p class="text-2xl font-bold text-heading tracking-tight">${{ $leftBusinessToday }}</p>
+            <p class="text-xs text-muted mt-1">Binary business volume</p>
+        </div>
+        <div class="cmc-stat-card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-medium text-muted">Today Right</p>
+                <span class="cmc-stat-icon"><i class="ph ph-arrow-fat-right"></i></span>
+            </div>
+            <p class="text-2xl font-bold text-heading tracking-tight">${{ $rightBusinessToday }}</p>
+            <p class="text-xs text-muted mt-1">Binary business volume</p>
+        </div>
+        <div class="cmc-stat-card is-warn p-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-medium text-muted">Today Referral</p>
+                <span class="cmc-stat-icon"><i class="ph ph-users"></i></span>
+            </div>
+            <p class="text-2xl font-bold text-heading tracking-tight">${{ $referralToday }}</p>
+            <p class="text-xs text-muted mt-1">Paid after daily run</p>
+        </div>
+    </div>
+</section>
+
 <section class="cmc-roi-wallet p-5 sm:p-6 mb-6">
     <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
@@ -117,28 +191,47 @@
     </div>
 </section>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-    @foreach ([
-        ['Today Left', '$'.$leftBusinessToday, 'ph-arrow-fat-left', ''],
-        ['Today Right', '$'.$rightBusinessToday, 'ph-arrow-fat-right', ''],
-        ['Overall Left', '$'.$leftBusinessTotal, 'ph-chart-bar', 'is-accent'],
-        ['Overall Right', '$'.$rightBusinessTotal, 'ph-chart-bar', 'is-accent'],
-        ['Today Referral', '$'.$referralToday, 'ph-users', 'is-warn'],
-        ['Overall Referral', '$'.$referralTotal, 'ph-users-three', 'is-warn'],
-        ['Customer ID', (string) $user->id, 'ph-identification-badge', ''],
-        ['Package', '$'.number_format((float) ($user->package?->amount ?? 0), 2), 'ph-package', ''],
-    ] as [$label, $value, $icon, $tone])
-    <div class="cmc-stat-card {{ $tone }} p-4">
-        <div class="flex items-center justify-between mb-3">
-            <p class="text-xs font-medium text-muted">{{ $label }}</p>
-            <span class="cmc-stat-icon"><i class="ph {{ $icon }}"></i></span>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <section class="cmc-panel p-5">
+        <span class="cmc-chip mb-3"><i class="ph ph-tree-structure"></i> Binary matching income</span>
+        <p class="text-3xl font-bold text-heading tracking-tight">${{ number_format((float) $binaryTotal, 2) }}</p>
+        <p class="text-xs text-muted mt-1">Total binary earned till today · {{ (float) config('citymax.income.binary_percent') }}% of matched volume</p>
+        <div class="mt-4 rounded-xl bg-primary/5 border border-primary/15 p-3">
+            <p class="text-[11px] text-muted uppercase tracking-wide">Today Binary</p>
+            <p class="text-lg font-semibold text-heading mt-1">${{ $binaryToday }}</p>
         </div>
-        <p class="text-2xl font-bold text-heading tracking-tight">{{ $value }}</p>
-    </div>
-    @endforeach
+    </section>
+    <section class="cmc-panel p-5">
+        <span class="cmc-chip mb-3"><i class="ph ph-users-three"></i> Referral income</span>
+        <p class="text-3xl font-bold text-heading tracking-tight">${{ $referralTotal }}</p>
+        <p class="text-xs text-muted mt-1">Overall Referral · {{ (float) config('citymax.income.referral_percent') }}% of sponsored packages</p>
+    </section>
 </div>
 
-<section class="cmc-panel mb-6">
+<section class="mb-6">
+    <div class="mb-3">
+        <h2 class="text-base font-semibold text-heading m-0">Binary business</h2>
+        <p class="text-xs text-muted m-0">Package volume on each leg — not the matching bonus above</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        @foreach ([
+            ['Overall Left', '$'.$leftBusinessTotal, 'ph-chart-bar', 'is-accent'],
+            ['Overall Right', '$'.$rightBusinessTotal, 'ph-chart-bar', 'is-accent'],
+            ['Carry leftover left', '$'.$carryLeft, 'ph-stack', ''],
+            ['Carry leftover right', '$'.$carryRight, 'ph-stack', ''],
+        ] as [$label, $value, $icon, $tone])
+        <div class="cmc-stat-card {{ $tone }} p-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-medium text-muted">{{ $label }}</p>
+                <span class="cmc-stat-icon"><i class="ph {{ $icon }}"></i></span>
+            </div>
+            <p class="text-2xl font-bold text-heading tracking-tight">{{ $value }}</p>
+        </div>
+        @endforeach
+    </div>
+</section>
+
+<section class="cmc-panel">
     <div class="cmc-panel-head">
         <span class="cmc-stat-icon"><i class="ph ph-link"></i></span>
         <div>
@@ -165,44 +258,6 @@
                 </button>
             </div>
         </div>
-    </div>
-</section>
-
-<section class="cmc-panel">
-    <div class="cmc-panel-head">
-        <span class="cmc-stat-icon"><i class="ph ph-lightning"></i></span>
-        <div>
-            <h2 class="text-base font-semibold text-heading m-0">Quick actions</h2>
-            <p class="text-xs text-muted m-0">Move through your crypto workspace faster</p>
-        </div>
-    </div>
-    <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-        @if (empty($isAdminView))
-        <a href="{{ customer_portal_route('withdrawals.create') }}" class="cmc-quick-link">
-            <span class="cmc-ql-icon"><i class="ph ph-hand-withdraw"></i></span>
-            <div class="min-w-0">
-                <p class="text-sm font-semibold text-heading">Request withdrawal</p>
-                <p class="text-xs text-muted">Send USDT to your wallet</p>
-            </div>
-            <i class="ph ph-caret-right text-muted ml-auto"></i>
-        </a>
-        @endif
-        <a href="{{ customer_portal_route('tree') }}" class="cmc-quick-link">
-            <span class="cmc-ql-icon"><i class="ph ph-tree-structure"></i></span>
-            <div class="min-w-0">
-                <p class="text-sm font-semibold text-heading">Grow your tree</p>
-                <p class="text-xs text-muted">Invite & place members</p>
-            </div>
-            <i class="ph ph-caret-right text-muted ml-auto"></i>
-        </a>
-        <a href="{{ customer_portal_route('income.history') }}" class="cmc-quick-link">
-            <span class="cmc-ql-icon"><i class="ph ph-chart-line-up"></i></span>
-            <div class="min-w-0">
-                <p class="text-sm font-semibold text-heading">Income ledger</p>
-                <p class="text-xs text-muted">ROI, binary & referral</p>
-            </div>
-            <i class="ph ph-caret-right text-muted ml-auto"></i>
-        </a>
     </div>
 </section>
 @endsection
