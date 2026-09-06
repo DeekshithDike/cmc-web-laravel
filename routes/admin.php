@@ -49,6 +49,8 @@ Route::middleware(['auth:admin', 'admin'])->prefix('admin')->name('admin.')->gro
 
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/payments/start', [PaymentController::class, 'start'])->name('payments.start');
+    Route::post('/payments/sync-pending', [PaymentController::class, 'syncPending'])
+        ->name('payments.sync-pending');
     Route::post('/payments/{payment}/confirm', [PaymentController::class, 'confirm'])
         ->whereNumber('payment')
         ->name('payments.confirm');

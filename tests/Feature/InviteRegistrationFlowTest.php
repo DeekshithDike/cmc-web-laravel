@@ -548,6 +548,92 @@ class InviteRegistrationFlowTest extends TestCase
         ]);
     }
 
+    public function test_admin_sync_recovers_missed_invite_webhook_and_creates_the_member(): void
+    {
+        config([
+            'payments.default_receive' => 'nowpayments',
+            'payments.nowpayments.api_key' => 'live-key',
+            'payments.nowpayments.ipn_secret' => 'ipn-secret',
+            'payments.nowpayments.email' => 'np@test.com',
+            'payments.nowpayments.password' => 'np-pass',
+        ]);
+
+        Http::fake(function ($request) {
+            $url = $request->url();
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            if (str_contains($url, '/internal/jobs/place-member')) {
+                return Http::response(['ok' => true], 202);
+            }
+            if (str_contains($url, '/invoice')) {
+                return Http::response([
+                    'id' => 4522625843,
+                    'invoice_url' => 'https://nowpayments.io/payment/?iid=4522625843',
+                ], 201);
+            }
+            if (str_contains($url, '/auth')) {
+                return Http::response(['token' => 'jwt'], 200);
+            }
+            if ($request->method() === 'GET' && str_ends_with(rtrim($path, '/'), '/payment')) {
+                return Http::response([
+                    'data' => [[
+                        'payment_id' => 987654321,
+                        'invoice_id' => 4522625843,
+                        'payment_status' => 'finished',
+                        'price_amount' => 100,
+                        'price_currency' => 'usd',
+                    ]],
+                ], 200);
+            }
+
+            return Http::response(['ok' => true], 200);
+        });
+
+        $this->get(route('customer.register', [
+            'placementID' => $this->root->id,
+            'position' => 'left',
+            'sponsorID' => $this->root->id,
+        ]))->assertOk();
+
+        $this->post(route('customer.register.save'), [
+            'name' => 'Sync Invitee',
+            'email' => 'sync-invitee@test.com',
+            'package_id' => $this->package->id,
+            'parent_id' => $this->root->id,
+            'position' => 'left',
+        ])->assertRedirect('https://nowpayments.io/payment/?iid=4522625843');
+
+        $this->assertNull(User::query()->where('email', 'sync-invitee@test.com')->first());
+        $tx = PaymentTransaction::query()->where('provider_ref', '4522625843')->firstOrFail();
+        $this->assertSame('pending', $tx->status);
+
+        $html = $this->actingAs($this->admin)
+            ->get(route('admin.payments.index'))
+            ->assertOk()
+            ->assertSee('Sync pending payments', false)
+            ->assertSee('id="paySyncModal"', false)
+            ->getContent();
+        $this->assertDoesNotMatchRegularExpression(
+            '/<form[^>]+action="[^"]*\/payments\/sync-pending"[^>]*>\s*<button[^>]*>Sync pending payments/',
+            $html
+        );
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.payments.index'))
+            ->post(route('admin.payments.sync-pending'))
+            ->assertRedirect(route('admin.payments.index'))
+            ->assertSessionHas('success');
+
+        $user = User::query()->where('email', 'sync-invitee@test.com')->firstOrFail();
+        $this->assertTrue((bool) $user->is_active);
+        $this->assertTrue((bool) $user->payment_status);
+        $this->assertDatabaseHas('binary_trees', [
+            'users_id' => $this->root->id,
+            'left_user_id' => $user->id,
+        ]);
+        $this->assertSame('completed', $tx->fresh()->status);
+        $this->assertSame($user->id, $tx->fresh()->user_id);
+    }
+
     private function submitInvite(string $email, string $position): void
     {
         $this->get(route('customer.register', [

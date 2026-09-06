@@ -184,6 +184,10 @@ class AllEndpointsAndUseCasesTest extends TestCase
             ->assertSessionHas('success');
         $this->assertSame('completed', $tx->fresh()->status);
 
+        $this->actingAs($this->admin)->post(route('admin.payments.sync-pending'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
         $this->actingAs($this->admin)->post(route('admin.income.daily.run'))
             ->assertRedirect()
             ->assertSessionHas('success');

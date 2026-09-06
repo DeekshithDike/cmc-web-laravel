@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\PaymentProvider;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentTransaction;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Support\AdminList;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use InvalidArgumentException;
 use Throwable;
 
 class PaymentController extends Controller
@@ -46,7 +48,12 @@ class PaymentController extends Controller
             ->paginate(AdminList::perPage($request))
             ->withQueryString();
 
-        return view('admin.payments.index', compact('transactions', 'q', 'status'));
+        $showPaymentSync = PaymentTransaction::query()
+            ->where('status', 'pending')
+            ->where('provider', PaymentProvider::NowPayments)
+            ->exists();
+
+        return view('admin.payments.index', compact('transactions', 'q', 'status', 'showPaymentSync'));
     }
 
     public function start(Request $request, PaymentService $payments): RedirectResponse
@@ -87,5 +94,41 @@ class PaymentController extends Controller
         }
 
         return back()->with('success', 'Payment confirmed.');
+    }
+
+    public function syncPending(PaymentService $payments): RedirectResponse
+    {
+        try {
+            $result = $payments->syncPendingPayments();
+        } catch (InvalidArgumentException|Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $parts = [];
+        if ($result['completed'] > 0) {
+            $parts[] = $result['completed'].' marked paid and activated';
+        }
+        if ($result['failed'] > 0) {
+            $parts[] = $result['failed'].' marked failed';
+        }
+        if ($result['unchanged'] > 0) {
+            $parts[] = $result['unchanged'].' still pending';
+        }
+        if ($result['skipped'] > 0) {
+            $parts[] = $result['skipped'].' skipped';
+        }
+
+        $message = $result['checked'] === 0
+            ? 'No pending NOWPayments payments to sync.'
+            : 'Checked '.$result['checked'].' pending payment(s)'
+                .($parts !== [] ? ': '.implode(', ', $parts) : '')
+                .'.';
+
+        $redirect = back()->with('success', $message);
+        if ($result['errors'] !== []) {
+            $redirect->with('error', implode(' ', $result['errors']));
+        }
+
+        return $redirect;
     }
 }

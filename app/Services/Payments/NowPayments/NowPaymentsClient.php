@@ -14,8 +14,9 @@ use RuntimeException;
  *
  * Docs: https://documenter.getpostman.com/view/7907941/2s93JusNJt
  * Receive: POST /invoice + IPN (x-nowpayments-sig HMAC-SHA512)
+ * Status:  GET /payment/{payment_id} (API key), GET /payment?invoiceId= (JWT + API key)
  * Send:    POST /auth → JWT, POST /payout, POST /payout/{id}/verify (2FA)
- * Status:  GET /payout/{payout_id} (API key only), GET /payout?batch_id= (list)
+ * Payout:  GET /payout/{payout_id} (API key only), GET /payout?batch_id= (list)
  */
 class NowPaymentsClient
 {
@@ -93,6 +94,45 @@ class NowPaymentsClient
             ->throw();
 
         return $this->decodeOkOrJson($response->body(), $response->json());
+    }
+
+    /**
+     * GET /v1/payment/{payment_id} — API key only (no JWT).
+     * Same body shape as the payment IPN.
+     */
+    public function getPaymentStatus(string $paymentId): array
+    {
+        $paymentId = trim($paymentId);
+        if (! ctype_digit($paymentId)) {
+            throw new RuntimeException('NOWPayments payment id must be numeric.');
+        }
+
+        $response = $this->request()->get($this->url('/payment/'.$paymentId));
+
+        return $this->decodePayoutLookup($response, 'payment status');
+    }
+
+    /**
+     * GET /v1/payment?invoiceId=&limit=&page= — JWT + API key.
+     *
+     * @param  array<string, scalar|null>  $query
+     * @return array<string, mixed>
+     */
+    public function listPayments(array $query = []): array
+    {
+        $filtered = [];
+        foreach ($query as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $filtered[$key] = $value;
+        }
+
+        $response = $this->request()
+            ->withToken($this->bearerToken())
+            ->get($this->url('/payment'), $filtered);
+
+        return $this->decodePayoutLookup($response, 'payment list');
     }
 
     /**

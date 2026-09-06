@@ -179,12 +179,175 @@ class NowPaymentsPaymentGateway implements PaymentGatewayInterface
     {
         $status = strtolower((string) ($request->input('payment_status') ?? $request->input('status') ?? ''));
 
-        return match ($status) {
+        return $this->mapRemoteStatus($status);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function mapPayloadStatus(array $payload): string
+    {
+        return $this->mapRemoteStatus((string) ($payload['payment_status'] ?? $payload['status'] ?? ''));
+    }
+
+    public function mapRemoteStatus(string $status): string
+    {
+        return match (strtolower(trim($status))) {
             'finished' => 'completed',
             'failed', 'refunded', 'expired' => 'failed',
             'partially_paid', 'waiting', 'confirming', 'confirmed', 'sending' => 'pending',
             default => 'pending',
         };
+    }
+
+    /**
+     * Lookup the current NOWPayments payment for a pending invoice.
+     * Prefers GET /payment/{id} when we already have a payment_id; otherwise lists by invoice id.
+     *
+     * @return array<string, mixed>
+     */
+    public function fetchPaymentStatus(PaymentTransaction $transaction): array
+    {
+        $paymentId = $this->storedPaymentId($transaction);
+        $lastError = null;
+
+        if ($this->isNowPaymentsId($paymentId)) {
+            try {
+                $payload = $this->client->getPaymentStatus($paymentId);
+
+                return $this->normalizePaymentPayload($payload);
+            } catch (RuntimeException $e) {
+                $lastError = $e;
+                if (! str_contains(strtolower($e->getMessage()), 'not found')) {
+                    throw $e;
+                }
+            }
+        }
+
+        $invoiceId = $this->storedInvoiceId($transaction);
+        if (! $this->isNowPaymentsId($invoiceId)) {
+            throw $lastError ?? new RuntimeException('NOWPayments invoice id is missing or not a valid numeric invoice id.');
+        }
+
+        if (! $this->client->payoutConfigured()) {
+            throw new RuntimeException('NOWPayments login is required to look up invoice payments. Set NOWPAYMENTS_EMAIL and NOWPAYMENTS_PASSWORD.');
+        }
+
+        $listed = $this->client->listPayments([
+            'invoiceId' => $invoiceId,
+            'limit' => 50,
+            'page' => 0,
+        ]);
+        $match = $this->pickListedPayment($listed);
+        if ($match !== null) {
+            return $this->normalizePaymentPayload($match);
+        }
+
+        return ['payment_status' => 'waiting', 'invoice_id' => $invoiceId];
+    }
+
+    /**
+     * @param  array<string, mixed>  $listed
+     * @return array<string, mixed>|null
+     */
+    public function pickListedPayment(array $listed): ?array
+    {
+        $rows = $listed['data'] ?? $listed['payments'] ?? null;
+        if (! is_array($rows)) {
+            $rows = isset($listed['payment_id']) ? [$listed] : [];
+        }
+
+        $originals = [];
+        foreach ($rows as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            if (filled($item['parent_payment_id'] ?? null)) {
+                continue;
+            }
+            $originals[] = $item;
+        }
+
+        if ($originals === []) {
+            return null;
+        }
+
+        foreach ($originals as $item) {
+            if (strtolower((string) ($item['payment_status'] ?? '')) === 'finished') {
+                return $item;
+            }
+        }
+
+        foreach (['failed', 'refunded', 'expired'] as $terminal) {
+            foreach ($originals as $item) {
+                if (strtolower((string) ($item['payment_status'] ?? '')) === $terminal) {
+                    return $item;
+                }
+            }
+        }
+
+        return $originals[0];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function normalizePaymentPayload(array $payload): array
+    {
+        if (isset($payload['payment_id']) || isset($payload['payment_status'])) {
+            return $payload;
+        }
+
+        $nested = $payload['payment'] ?? $payload['data'] ?? null;
+        if (is_array($nested) && (isset($nested['payment_id']) || isset($nested['payment_status']))) {
+            return $nested;
+        }
+
+        return $payload;
+    }
+
+    private function storedPaymentId(PaymentTransaction $transaction): string
+    {
+        $meta = $transaction->meta ?? [];
+        $candidates = [
+            $meta['payment_id'] ?? null,
+            is_array($meta['webhook'] ?? null) ? ($meta['webhook']['payment_id'] ?? null) : null,
+            is_array($meta['payment_status_sync'] ?? null) ? ($meta['payment_status_sync']['payment_id'] ?? null) : null,
+        ];
+
+        foreach ($candidates as $value) {
+            $id = trim((string) $value);
+            if ($this->isNowPaymentsId($id)) {
+                return $id;
+            }
+        }
+
+        return '';
+    }
+
+    private function storedInvoiceId(PaymentTransaction $transaction): string
+    {
+        $meta = $transaction->meta ?? [];
+        $candidates = [
+            $transaction->provider_ref,
+            $meta['invoice_id'] ?? null,
+            is_array($meta['invoice'] ?? null) ? ($meta['invoice']['id'] ?? $meta['invoice']['invoice_id'] ?? null) : null,
+        ];
+
+        foreach ($candidates as $value) {
+            $id = trim((string) $value);
+            if ($this->isNowPaymentsId($id)) {
+                return $id;
+            }
+        }
+
+        return '';
+    }
+
+    private function isNowPaymentsId(string $id): bool
+    {
+        return $id !== '' && ctype_digit($id);
     }
 
     /**

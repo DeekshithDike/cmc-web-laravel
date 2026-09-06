@@ -180,6 +180,20 @@ class PaymentGatewayScenariosTest extends TestCase
         return $user;
     }
 
+    private function pendingNowPaymentsRow(string $invoiceId): PaymentTransaction
+    {
+        return PaymentTransaction::query()->create([
+            'user_id' => $this->root->id,
+            'package_id' => $this->package->id,
+            'provider' => PaymentProvider::NowPayments,
+            'provider_ref' => $invoiceId,
+            'amount' => '100.00',
+            'currency' => 'USD',
+            'status' => 'pending',
+            'meta' => ['order_id' => 'CMC-'.$invoiceId, 'invoice' => ['id' => $invoiceId]],
+        ]);
+    }
+
     public function test_live_invoice_success_ipn_activates_member_and_writes_db(): void
     {
         $this->enableLiveNowPaymentsReceive();
@@ -954,5 +968,155 @@ class PaymentGatewayScenariosTest extends TestCase
         $code = app(NowPaymentsClient::class)->generateTotpCode(null, 1_700_000_000);
         $this->assertSame(6, strlen($code));
         $this->assertTrue(ctype_digit($code));
+    }
+
+    public function test_sync_pending_payments_updates_from_nowpayments_and_is_idempotent_with_ipn(): void
+    {
+        $this->enableLiveNowPaymentsReceive();
+        config([
+            'payments.nowpayments.email' => 'np@test.com',
+            'payments.nowpayments.password' => 'np-pass',
+        ]);
+
+        Http::fake(function ($request) {
+            $url = $request->url();
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            if (str_contains($url, '/internal/jobs/place-member')) {
+                return Http::response(['ok' => true], 202);
+            }
+            if ($request->method() === 'POST' && str_contains($path, '/invoice')) {
+                return Http::response([
+                    'id' => '4522625899',
+                    'invoice_url' => 'https://nowpayments.io/payment/?iid=4522625899',
+                ], 201);
+            }
+            if (str_contains($url, '/auth')) {
+                return Http::response(['token' => 'jwt'], 200);
+            }
+            if ($request->method() === 'GET' && preg_match('#/payment/(\d+)$#', $path) === 1) {
+                return Http::response(['status' => false, 'statusCode' => 404, 'message' => 'not found'], 404);
+            }
+            if ($request->method() === 'GET' && str_ends_with(rtrim($path, '/'), '/payment')) {
+                parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+                $invoiceId = (string) ($query['invoiceId'] ?? '');
+                $status = match ($invoiceId) {
+                    '4522625801' => 'finished',
+                    '4522625802' => 'partially_paid',
+                    '4522625803' => 'expired',
+                    default => 'waiting',
+                };
+                if ($status === 'waiting') {
+                    return Http::response(['data' => [], 'total' => 0], 200);
+                }
+
+                return Http::response([
+                    'data' => [[
+                        'payment_id' => (int) $invoiceId,
+                        'invoice_id' => (int) $invoiceId,
+                        'payment_status' => $status,
+                        'price_amount' => 100,
+                        'price_currency' => 'usd',
+                    ]],
+                ], 200);
+            }
+
+            return Http::response(['ok' => true], 200);
+        });
+
+        $payments = app(PaymentService::class);
+        $finishedUser = $this->createAwaitingMember('sync-paid@test.com');
+        $finished = $payments->start($finishedUser, 100, PaymentProvider::NowPayments, [
+            'package_id' => $this->package->id,
+        ])['transaction'];
+        $finished->update(['provider_ref' => '4522625801']);
+
+        $partial = $this->pendingNowPaymentsRow('4522625802');
+        $expired = $this->pendingNowPaymentsRow('4522625803');
+        $waiting = $this->pendingNowPaymentsRow('4522625804');
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.payments.index'))
+            ->post(route('admin.payments.sync-pending'))
+            ->assertRedirect(route('admin.payments.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('completed', $finished->fresh()->status);
+        $this->assertTrue((bool) $finishedUser->fresh()->payment_status);
+        $this->assertSame('pending', $partial->fresh()->status);
+        $this->assertSame('failed', $expired->fresh()->status);
+        $this->assertSame('pending', $waiting->fresh()->status);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.payments.index'))
+            ->post(route('admin.payments.sync-pending'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertTrue((bool) $finishedUser->fresh()->payment_status);
+        $this->assertSame(1, PaymentTransaction::query()->where('user_id', $finishedUser->id)->where('status', 'completed')->count());
+
+        $this->postSignedPaymentIpn([
+            'payment_status' => 'finished',
+            'invoice_id' => 4522625801,
+            'payment_id' => 4522625801,
+            'price_amount' => 100,
+        ])->assertOk()->assertJson(['idempotent' => true]);
+        $this->assertSame('completed', $finished->fresh()->status);
+        $this->assertSame(1, BinaryTreeLeft::query()->where('from_user_id', $finishedUser->id)->count());
+    }
+
+    public function test_sync_uses_stored_payment_id_and_skips_manual_rows(): void
+    {
+        $this->enableLiveNowPaymentsReceive();
+
+        Http::fake(function ($request) {
+            $path = (string) parse_url($request->url(), PHP_URL_PATH);
+            if (str_contains($request->url(), '/internal/jobs/place-member')) {
+                return Http::response(['ok' => true], 202);
+            }
+            if ($request->method() === 'POST' && str_contains($path, '/invoice')) {
+                return Http::response([
+                    'id' => '4522625901',
+                    'invoice_url' => 'https://nowpayments.io/payment/?iid=4522625901',
+                ], 201);
+            }
+            if ($request->method() === 'GET' && preg_match('#/payment/(\d+)$#', $path, $matches) === 1) {
+                return Http::response([
+                    'payment_id' => (int) $matches[1],
+                    'payment_status' => 'finished',
+                    'price_amount' => 100,
+                ], 200);
+            }
+
+            return Http::response(['ok' => true], 200);
+        });
+
+        $user = $this->createAwaitingMember('sync-id@test.com');
+        $tx = app(PaymentService::class)->start($user, 100, PaymentProvider::NowPayments, [
+            'package_id' => $this->package->id,
+        ])['transaction'];
+        $tx->update([
+            'provider_ref' => '4522625901',
+            'meta' => array_merge($tx->meta ?? [], ['payment_id' => '6249365965']),
+        ]);
+
+        $manual = PaymentTransaction::query()->create([
+            'user_id' => $this->root->id,
+            'package_id' => $this->package->id,
+            'provider' => PaymentProvider::Manual,
+            'provider_ref' => 'MAN-KEEP',
+            'amount' => '100.00',
+            'currency' => 'USD',
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.payments.sync-pending'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('completed', $tx->fresh()->status);
+        $this->assertSame('pending', $manual->fresh()->status);
+        Http::assertSent(fn ($request) => $request->method() === 'GET' && str_contains($request->url(), '/payment/6249365965'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/auth'));
     }
 }

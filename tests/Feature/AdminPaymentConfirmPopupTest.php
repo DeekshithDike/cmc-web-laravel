@@ -79,6 +79,35 @@ class AdminPaymentConfirmPopupTest extends TestCase
             'data-action="'.route('admin.payments.confirm', $doneTx).'"',
             $html
         );
+        $this->assertStringNotContainsString('Sync pending payments', $html);
+        $this->assertStringNotContainsString('id="paySyncModal"', $html);
+    }
+
+    public function test_pending_nowpayments_shows_sync_popup_not_instant_post(): void
+    {
+        [$admin, $package, $user] = $this->seedAdminPaymentFixtures();
+        $this->pendingPayment($user, $package, '4522625843', [], PaymentProvider::NowPayments);
+
+        $html = $this->actingAs($admin)
+            ->get(route('admin.payments.index'))
+            ->assertOk()
+            ->assertSee('js-pay-sync', false)
+            ->assertSee('id="paySyncModal"', false)
+            ->assertSee('Sync pending payments?', false)
+            ->assertSee('Yes, sync status', false)
+            ->assertSee('does <strong>not</strong> create a new invoice', false)
+            ->assertSee('does <strong>not</strong> charge the customer again', false)
+            ->assertSee('paid in full', false)
+            ->assertSee('paid less', false)
+            ->assertSee(route('admin.payments.sync-pending'), false)
+            ->getContent();
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/<form[^>]+action="[^"]*\/payments\/sync-pending"[^>]*>\s*<button[^>]*>Sync pending payments/',
+            $html,
+            'Sync pending payments must not POST immediately'
+        );
+        $this->assertStringContainsString('js-pay-confirm', $html);
     }
 
     public function test_admin_confirm_post_still_marks_pending_payment_paid(): void
@@ -139,12 +168,17 @@ class AdminPaymentConfirmPopupTest extends TestCase
     /**
      * @param  array<string, mixed>  $meta
      */
-    private function pendingPayment(User $user, Package $package, string $ref, array $meta): PaymentTransaction
-    {
+    private function pendingPayment(
+        User $user,
+        Package $package,
+        string $ref,
+        array $meta,
+        PaymentProvider $provider = PaymentProvider::Manual,
+    ): PaymentTransaction {
         return PaymentTransaction::query()->create([
             'user_id' => $meta === [] ? $user->id : null,
             'package_id' => $package->id,
-            'provider' => PaymentProvider::Manual,
+            'provider' => $provider,
             'provider_ref' => $ref,
             'amount' => '100.00',
             'currency' => 'USD',

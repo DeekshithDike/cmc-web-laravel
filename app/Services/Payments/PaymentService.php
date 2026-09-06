@@ -15,6 +15,7 @@ use App\Services\Membership\MembershipService;
 use App\Services\Payments\NowPayments\NowPaymentsClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use Throwable;
 
 class PaymentService
@@ -152,6 +153,80 @@ class PaymentService
         }
 
         return $confirmed;
+    }
+
+    /**
+     * Backup for missed payment IPNs. Reuses confirm() so webhook + sync cannot double-activate.
+     *
+     * @return array{checked: int, completed: int, failed: int, unchanged: int, skipped: int, errors: list<string>}
+     */
+    public function syncPendingPayments(): array
+    {
+        $gateway = $this->gateways->driver(PaymentProvider::NowPayments);
+        if (! $gateway instanceof NowPaymentsPaymentGateway) {
+            throw new InvalidArgumentException('NOWPayments payment driver is unavailable.');
+        }
+
+        $summary = [
+            'checked' => 0,
+            'completed' => 0,
+            'failed' => 0,
+            'unchanged' => 0,
+            'skipped' => 0,
+            'errors' => [],
+        ];
+
+        $rows = PaymentTransaction::query()
+            ->where('status', 'pending')
+            ->where('provider', PaymentProvider::NowPayments)
+            ->orderBy('id')
+            ->get();
+
+        foreach ($rows as $transaction) {
+            $summary['checked']++;
+            if (! empty($transaction->meta['stub'])) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            try {
+                $payload = $gateway->fetchPaymentStatus($transaction);
+                if (filled($payload['parent_payment_id'] ?? null)) {
+                    $summary['unchanged']++;
+                    continue;
+                }
+
+                $status = $gateway->mapPayloadStatus($payload);
+                if ($status === 'pending') {
+                    $summary['unchanged']++;
+                    continue;
+                }
+
+                $updated = $this->confirm($transaction, [
+                    'status' => $status,
+                    'provider_ref' => $transaction->provider_ref,
+                    'payment_status_sync' => $payload,
+                    'webhook' => $payload,
+                ]);
+
+                if ($updated->status === 'completed') {
+                    $summary['completed']++;
+                } elseif ($updated->status === 'failed') {
+                    $summary['failed']++;
+                } else {
+                    $summary['unchanged']++;
+                }
+            } catch (Throwable $e) {
+                $summary['errors'][] = 'Payment #'.$transaction->id.': '.$e->getMessage();
+                Log::warning('Payment status sync failed', [
+                    'transaction_id' => $transaction->id,
+                    'provider_ref' => $transaction->provider_ref,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $summary;
     }
 
     private function attachCredentials(PaymentTransaction $confirmed, User $user): void

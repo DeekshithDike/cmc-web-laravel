@@ -13,7 +13,11 @@
     </div>
 </div>
 <div class="ibox">
-    <div class="ibox-title"><h5>Payment Transactions</h5></div>
+    <div class="ibox-title"><h5>Payment Transactions</h5>
+        @if(! empty($showPaymentSync))
+            <button type="button" class="btn btn-primary btn-sm pull-right js-pay-sync">Sync pending payments</button>
+        @endif
+    </div>
     <div class="ibox-content">
         <form method="GET" class="form-inline m-b-md">
             <input type="text" name="q" value="{{ $q }}" class="form-control" placeholder="Search Payment ID / Customer ID / ref">
@@ -107,6 +111,36 @@
         </div>
     </div>
 </div>
+
+@if(! empty($showPaymentSync))
+<div class="modal fade" id="paySyncModal" tabindex="-1" role="dialog" aria-labelledby="paySyncTitle">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('admin.payments.sync-pending') }}" id="paySyncForm">
+                @csrf
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="paySyncTitle">Sync pending payments?</h4>
+                </div>
+                <div class="modal-body">
+                    <p class="m-b-md">This checks NOWPayments for every <strong>pending</strong> customer payment. It does <strong>not</strong> create a new invoice and it does <strong>not</strong> charge the customer again.</p>
+                    <ul class="m-b-md">
+                        <li>If NOWPayments says the customer <strong>paid in full</strong>, we mark it paid and <strong>create / activate the member</strong> (same as the webhook).</li>
+                        <li>If the customer <strong>paid less</strong> than the package, it stays pending. The member is <strong>not</strong> created.</li>
+                        <li>If NOWPayments says <strong>failed, refunded, or expired</strong>, we mark it failed. The member is <strong>not</strong> created.</li>
+                        <li>If the customer is <strong>still paying</strong>, it stays pending.</li>
+                    </ul>
+                    <p class="m-b-none font-bold">Use this when a customer paid but the list did not update (webhook missed). Already completed or failed payments are not changed.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="paySyncSubmit">Yes, sync status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
@@ -151,3 +185,31 @@
 })(jQuery);
 </script>
 @endpush
+
+@if(! empty($showPaymentSync))
+@push('scripts')
+<script>
+(function ($) {
+    var $modal = $('#paySyncModal');
+    var $form = $('#paySyncForm');
+    var $submit = $('#paySyncSubmit');
+    var submitting = false;
+
+    $('.js-pay-sync').on('click', function () {
+        $submit.prop('disabled', false).text('Yes, sync status');
+        submitting = false;
+        $modal.modal('show');
+    });
+
+    $form.on('submit', function () {
+        if (submitting) {
+            return false;
+        }
+        submitting = true;
+        $submit.prop('disabled', true).text('Please wait…');
+        return true;
+    });
+})(jQuery);
+</script>
+@endpush
+@endif
