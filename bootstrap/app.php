@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt((string) config('citymax.income.run_at', '00:00'));
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
         $middleware->append(SecureHeaders::class);
         $middleware->web(prepend: [
             UseRequestRootUrl::class,
