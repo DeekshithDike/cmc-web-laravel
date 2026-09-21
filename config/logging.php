@@ -94,7 +94,14 @@ return [
             'processors' => [PsrLogMessageProcessor::class],
         ],
 
+        // EB sets LOG_CHANNEL=stderr; php-fpm discards that. Always keep a file too.
         'stderr' => [
+            'driver' => 'stack',
+            'channels' => ['single', 'stderr_stream'],
+            'ignore_exceptions' => false,
+        ],
+
+        'stderr_stream' => [
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
