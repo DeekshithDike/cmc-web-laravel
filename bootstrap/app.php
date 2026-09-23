@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureCustomerMembershipActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsCustomer;
 use App\Http\Middleware\SecureHeaders;
+use App\Http\Middleware\VerifyServerJobRequest;
 use App\Http\Middleware\UseRequestRootUrl;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -28,6 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 require __DIR__.'/../routes/admin.php';
                 require __DIR__.'/../routes/customer.php';
             });
+
+            require __DIR__.'/../routes/server_jobs.php';
         },
     )
     ->withSchedule(function (Schedule $schedule): void {
@@ -47,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'customer' => EnsureUserIsCustomer::class,
             'membership' => EnsureCustomerMembershipActive::class,
             'customer-portal' => BindAdminPortalCustomer::class,
+            'server-job' => VerifyServerJobRequest::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

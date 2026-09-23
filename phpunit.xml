@@ -47,5 +47,9 @@
         <env name="MEMBERSHIP_EXPIRY_WARNING_DAYS" value="10"/>
         <env name="INCOME_REFERRAL_PERCENT" value="10"/>
         <env name="INCOME_BINARY_PERCENT" value="5"/>
+        <env name="SERVER_JOB_SECRET" value="test-server-job-secret-32chars-min" force="true"/>
+        <env name="SERVER_JOB_INCOME_PATH" value="e7428b885ad4b5b8cad66e26d1e1e50039cc5f976a85f8f4" force="true"/>
+        <env name="SERVER_JOB_PAYMENT_PATH" value="995ea036ca1686e8d33380fad6aa149eb394107857512925" force="true"/>
+        <env name="SERVER_JOB_ALLOWED_IPS" value="127.0.0.1,::1" force="true"/>
     </php>
 </phpunit>

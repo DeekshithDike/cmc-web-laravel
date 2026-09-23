@@ -71,6 +71,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->ip());
         });
 
+        RateLimiter::for('server-job', function (Request $request) {
+            if (app()->environment('testing')) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute(30)->by((string) $request->server->get('REMOTE_ADDR', 'unknown'));
+        });
+
         RateLimiter::for('income-run', function (Request $request) {
             if (app()->environment('testing')) {
                 return Limit::none();
