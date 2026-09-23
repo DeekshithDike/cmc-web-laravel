@@ -15,7 +15,11 @@ class VerifyServerJobRequest
         $allowed = config('server_jobs.allowed_ips');
         $remote = (string) $request->server->get('REMOTE_ADDR', '');
 
-        if (strlen($secret) < 32 || ! is_array($allowed) || ! in_array($remote, $allowed, true)) {
+        if (strlen($secret) < 32) {
+            abort(404);
+        }
+
+        if (is_array($allowed) && $allowed !== [] && ! in_array($remote, $allowed, true)) {
             abort(404);
         }
 

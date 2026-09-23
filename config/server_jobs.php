@@ -2,7 +2,7 @@
 
 $ips = array_values(array_filter(array_map(
     'trim',
-    explode(',', (string) env('SERVER_JOB_ALLOWED_IPS', '127.0.0.1,::1'))
+    explode(',', (string) env('SERVER_JOB_ALLOWED_IPS', ''))
 )));
 
 return [
