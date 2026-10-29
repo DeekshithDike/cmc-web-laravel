@@ -35,6 +35,13 @@ class CustomerLoginTest extends TestCase
         $response->assertRedirect(route('customer.dashboard'));
         $this->assertAuthenticatedAs($customer, 'customer');
         $this->assertGuest('admin');
+
+        $this->actingAs($customer)
+            ->get(route('customer.dashboard'))
+            ->assertOk()
+            ->assertSee('id="cmc-offer-modal"', false)
+            ->assertSee('customer-assets/images/goa-offer.jpg', false)
+            ->assertSee('aria-label="Close offer"', false);
     }
 
     public function test_expired_customer_cannot_login(): void

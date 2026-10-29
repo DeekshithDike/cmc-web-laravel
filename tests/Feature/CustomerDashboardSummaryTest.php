@@ -91,7 +91,11 @@ class CustomerDashboardSummaryTest extends TestCase
             ->assertSee('Share registration link', false)
             ->assertSee('Without sponsor', false)
             ->assertSee('With your sponsor ID', false)
-            ->assertDontSee('Quick actions', false);
+            ->assertDontSee('Quick actions', false)
+            ->assertSee('id="cmc-offer-modal"', false)
+            ->assertSee('customer-assets/images/goa-offer.jpg', false)
+            ->assertSee('aria-label="Close offer"', false)
+            ->assertSee('Special Goa Offer', false);
     }
 
     public function test_admin_customer_dashboard_shows_the_same_summary_and_invite_links(): void
@@ -118,7 +122,9 @@ class CustomerDashboardSummaryTest extends TestCase
             ->assertSee('id="open-register-url"', false)
             ->assertSee('id="open-register-sponsored-url"', false)
             ->assertDontSee('Request withdrawal', false)
-            ->assertDontSee('Quick actions', false);
+            ->assertDontSee('Quick actions', false)
+            ->assertDontSee('id="cmc-offer-modal"', false)
+            ->assertDontSee('goa-offer.jpg', false);
     }
 
     public function test_dashboard_does_not_show_another_customers_earnings_or_withdrawals(): void
@@ -150,5 +156,16 @@ class CustomerDashboardSummaryTest extends TestCase
             ->assertDontSee('$99.00', false)
             ->assertDontSee('$88.00', false)
             ->assertDontSee('$77.00', false);
+    }
+
+    public function test_customer_tree_does_not_show_goa_offer_modal(): void
+    {
+        $this->assertFileExists(public_path('customer-assets/images/goa-offer.jpg'));
+
+        $this->actingAs($this->root)
+            ->get(route('customer.tree'))
+            ->assertOk()
+            ->assertDontSee('id="cmc-offer-modal"', false)
+            ->assertDontSee('goa-offer.jpg', false);
     }
 }

@@ -438,3 +438,66 @@ html:not(.dark) #topbar {
   #sidebar nav .nav-item i,
   #mobile-sidebar nav .mobile-nav-item i { animation: none; transition: none; }
 }
+
+/* Centered Goa offer poster — ~70% of the viewport so the dimmed dashboard shows around it */
+.cmc-offer-modal {
+  width: 70vw;
+  height: 80dvh;
+  min-height: 70dvh;
+  max-width: calc(100vw - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 1.25rem;
+  background: #041018;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+.cmc-offer-modal::backdrop {
+  background: rgba(4, 16, 24, 0.72);
+  backdrop-filter: blur(4px);
+}
+.cmc-offer-modal img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #041018;
+}
+.cmc-offer-close {
+  position: absolute;
+  z-index: 2;
+  top: 0.65rem;
+  right: 0.65rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #041018;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+.cmc-offer-close:hover,
+.cmc-offer-close:focus-visible {
+  background: #e8f1f9;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .cmc-offer-modal {
+    width: 88vw;
+    height: 78dvh;
+    min-width: 0;
+    min-height: 70dvh;
+    border-radius: 1rem;
+  }
+}

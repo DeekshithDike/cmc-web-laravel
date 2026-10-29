@@ -97,6 +97,8 @@ class AdminCustomerPortalTest extends TestCase
         $this->assertStringContainsString(route('admin.customers.income.history', $this->root, false), $adminHtml);
         $this->assertStringNotContainsString(route('customer.withdrawals.create', false), $adminHtml);
         $this->assertStringContainsString(route('customer.withdrawals.create', false), $customerHtml);
+        $this->assertStringContainsString('id="cmc-offer-modal"', $customerHtml);
+        $this->assertStringNotContainsString('id="cmc-offer-modal"', $adminHtml);
         $this->assertGuest('customer');
     }
 

@@ -260,10 +260,50 @@
         </div>
     </div>
 </section>
+
+@if (empty($isAdminView))
+<dialog id="cmc-offer-modal" class="cmc-offer-modal" aria-labelledby="cmc-offer-title">
+    <button type="button" class="cmc-offer-close" id="cmc-offer-close" aria-label="Close offer">
+        <span aria-hidden="true">&times;</span>
+    </button>
+    <h2 id="cmc-offer-title" class="sr-only">Special Goa Offer</h2>
+    <img src="{{ asset('customer-assets/images/goa-offer.jpg') }}" alt="City Max Crypto Special Goa Offer: 14th and 15th, one night two days. Achievement period 27 October 2026 to 5 November 2026. Direct joining 2,000 USDT, fresh binary matching 7,000 USDT.">
+</dialog>
+@endif
 @endsection
 
 @push('scripts')
 <script>
+(function () {
+    const dialog = document.getElementById('cmc-offer-modal');
+    if (!dialog || typeof dialog.showModal !== 'function') return;
+
+    const closeOffer = function () {
+        if (dialog.open) {
+            dialog.close();
+        }
+    };
+
+    document.getElementById('cmc-offer-close')?.addEventListener('click', closeOffer);
+    dialog.addEventListener('click', function (event) {
+        const box = dialog.getBoundingClientRect();
+        const inside = event.clientX >= box.left && event.clientX <= box.right
+            && event.clientY >= box.top && event.clientY <= box.bottom;
+        if (!inside || event.target === dialog) {
+            closeOffer();
+        }
+    });
+    dialog.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeOffer();
+        }
+    });
+
+    if (!dialog.open) {
+        dialog.showModal();
+    }
+})();
+
 (function () {
     const el = document.getElementById('cmc-server-clock');
     if (!el) return;
