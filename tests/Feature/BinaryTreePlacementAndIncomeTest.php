@@ -243,6 +243,8 @@ class BinaryTreePlacementAndIncomeTest extends TestCase
         $activated = $dummy->fresh();
         $this->assertFalse((bool) $activated->is_power_id);
         $this->assertTrue((bool) $activated->is_active);
+        $this->assertNotNull($activated->activated_at);
+        $this->assertTrue($dummy->created_at?->equalTo($activated->created_at));
         $this->assertSame('guest-power@test.com', $activated->email);
         $this->assertSame($dummy->id, BinaryTree::query()->where('users_id', $this->root->id)->value('left_user_id'));
         $this->assertSame('100.00', $this->sideTotal($this->root->id, 'left'));

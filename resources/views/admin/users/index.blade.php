@@ -19,11 +19,12 @@
         </form>
         <div class="table-responsive cmc-actions-table">
             <table class="table table-striped">
-                <thead><tr><th>Customer ID</th><th>Name</th><th>Email</th><th>Package</th><th>Wallet</th><th>Expiry</th><th class="text-right">Actions</th></tr></thead>
+                <thead><tr><th>Customer ID</th><th>Activated</th><th>Name</th><th>Email</th><th>Package</th><th>Wallet</th><th>Expiry</th><th class="text-right">Actions</th></tr></thead>
                 <tbody>
                 @forelse($users as $user)
                     <tr>
                         <td>{{ $user->id }}</td>
+                        <td>{{ \App\Support\IncomeCalendar::formatDate($user->activated_at) }}</td>
                         <td>{{ $user->name }}</td>
                         <td>{{ $user->email }}</td>
                         <td>{{ $user->package->name ?? '—' }}</td>
@@ -38,7 +39,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">No users found.</td></tr>
+                    <tr><td colspan="8">No users found.</td></tr>
                 @endforelse
                 </tbody>
             </table>

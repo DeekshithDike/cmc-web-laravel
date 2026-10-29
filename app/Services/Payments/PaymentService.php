@@ -321,6 +321,9 @@ class PaymentService
             if (! $user->expiry_date) {
                 $user->expiry_date = now()->addWeekdays((int) config('citymax.membership.weekdays'))->toDateString();
             }
+            if (! $user->activated_at) {
+                $user->activated_at = now();
+            }
             $user->save();
 
             $amount = (float) $transaction->amount;

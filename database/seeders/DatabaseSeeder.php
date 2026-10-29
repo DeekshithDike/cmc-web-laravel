@@ -145,6 +145,7 @@ class DatabaseSeeder extends Seeder
             'is_power_id' => false,
             'package_id' => $starter?->id,
             'expiry_date' => now()->addWeekdays((int) config('citymax.membership.weekdays'))->toDateString(),
+            'activated_at' => now(),
             'phone' => $seed['customer_phone'],
             'country' => $seed['customer_country'],
             'wallet_balance' => '0.00',

@@ -36,6 +36,7 @@ class CustomerIdGenerationTest extends TestCase
         $user = $this->placeMember('random-id@test.com', 'left');
 
         $this->assertTrue(CustomerIdGenerator::isInRange((int) $user->id));
+        $this->assertNotNull($user->activated_at);
         $this->assertNotSame((int) $this->root->id, (int) $user->id);
         $this->assertSame($this->root->id, $user->parent_id);
         $this->assertSame($this->root->id, $user->sponsor_id);
@@ -55,6 +56,7 @@ class CustomerIdGenerationTest extends TestCase
         $this->assertTrue(CustomerIdGenerator::isInRange((int) $power->id));
         $this->assertTrue($power->is_power_id);
         $this->assertFalse($power->is_active);
+        $this->assertNull($power->activated_at);
 
         $activated = app(MembershipService::class)->activatePowerId((int) $power->id, [
             'name' => 'Activated Power',
@@ -66,6 +68,8 @@ class CustomerIdGenerationTest extends TestCase
         $this->assertSame($power->id, $activated->id);
         $this->assertFalse($activated->is_power_id);
         $this->assertTrue($activated->is_active);
+        $this->assertNotNull($activated->activated_at);
+        $this->assertTrue($power->created_at?->equalTo($activated->created_at));
         $this->assertCustomerCanLoginWith((int) $activated->id, 'Act#12');
     }
 

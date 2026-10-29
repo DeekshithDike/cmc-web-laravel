@@ -254,6 +254,7 @@ class PaymentGatewayScenariosTest extends TestCase
         $this->assertTrue((bool) $fresh->is_active);
         $this->assertSame(UserStatus::Active, $fresh->status);
         $this->assertNotNull($fresh->expiry_date);
+        $this->assertNotNull($fresh->activated_at);
         $this->assertDatabaseHas('calculation_jobs', ['job_type' => 'place-member']);
         $this->assertDatabaseHas('binary_tree_lefts', [
             'user_id' => $this->root->id,

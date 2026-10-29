@@ -32,6 +32,7 @@ class User extends Authenticatable
         'position',
         'package_id',
         'expiry_date',
+        'activated_at',
         'phone',
         'country',
         'wallet_address',
@@ -55,6 +56,7 @@ class User extends Authenticatable
             'payment_status' => 'boolean',
             'is_power_id' => 'boolean',
             'expiry_date' => 'date',
+            'activated_at' => 'datetime',
             'wallet_balance' => 'decimal:2',
         ];
     }

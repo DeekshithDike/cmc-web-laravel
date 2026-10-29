@@ -392,6 +392,7 @@ class InviteRegistrationFlowTest extends TestCase
         $user = User::query()->where('email', 'paid@test.com')->firstOrFail();
         $this->assertTrue((bool) $user->is_active);
         $this->assertTrue((bool) $user->payment_status);
+        $this->assertNotNull($user->activated_at);
         $this->assertSame($this->root->id, $user->sponsor_id);
         $this->assertSame($this->root->id, $user->parent_id);
         $this->assertDatabaseHas('binary_trees', [

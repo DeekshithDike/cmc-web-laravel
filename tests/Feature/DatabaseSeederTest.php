@@ -55,6 +55,8 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(config('citymax.seed.customer_email'), $parent->email);
         $this->assertNotNull($parent->binaryTree);
         $this->assertNull($parent->binaryTree->parent_id);
+        $this->assertNotNull($parent->activated_at);
+        $this->assertNull($admin->activated_at);
 
         $next = User::factory()->customer()->create(['email' => 'next-customer@example.com']);
         $this->assertSame(3559, $next->id);

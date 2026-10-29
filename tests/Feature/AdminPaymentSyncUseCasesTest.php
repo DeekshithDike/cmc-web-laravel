@@ -321,6 +321,7 @@ class AdminPaymentSyncUseCasesTest extends TestCase
         $this->assertSame('completed', $pending->fresh()->status);
         $this->assertTrue((bool) $unpaid->fresh()->payment_status);
         $this->assertTrue((bool) $unpaid->fresh()->is_active);
+        $this->assertNotNull($unpaid->fresh()->activated_at);
         $this->assertSame('completed', $done->fresh()->status);
         $this->assertSame('pending', $stub->fresh()->status);
     }

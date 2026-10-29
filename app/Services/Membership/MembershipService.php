@@ -58,6 +58,7 @@ class MembershipService
                 'phone' => $data['phone'] ?? null,
                 'country' => $data['country'] ?? null,
                 'expiry_date' => now()->addWeekdays((int) config('citymax.membership.weekdays'))->toDateString(),
+                'activated_at' => now(),
                 'wallet_balance' => '0.00',
             ]);
 
@@ -212,6 +213,7 @@ class MembershipService
                 'payment_status' => true,
                 'is_power_id' => false,
                 'expiry_date' => now()->addWeekdays((int) config('citymax.membership.weekdays'))->toDateString(),
+                'activated_at' => $user->activated_at ?? now(),
             ])->save();
 
             $user->plain_password = $password;

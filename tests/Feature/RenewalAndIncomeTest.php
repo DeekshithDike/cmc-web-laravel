@@ -40,10 +40,13 @@ class RenewalAndIncomeTest extends TestCase
             'is_active' => true,
             'payment_status' => true,
             'expiry_date' => now()->addDays(5)->toDateString(),
+            'activated_at' => now()->subMonths(6),
         ]);
+        $activatedAt = $user->activated_at?->copy();
 
         $this->actingAs($admin)->post(route('admin.renewals.renew', $user->id))->assertRedirect()->assertSessionHas('success');
         $this->assertTrue($user->fresh()->expiry_date->gt(now()->addDays(10)));
+        $this->assertTrue($activatedAt?->equalTo($user->fresh()->activated_at));
         $this->assertDatabaseHas('renewal_histories', ['user_id' => $user->id]);
     }
 
