@@ -10,7 +10,7 @@
         <div class="ibox">
             <div class="ibox-title"><h5>Profile details</h5></div>
             <div class="ibox-content">
-                <p class="text-muted">Only name and email can be changed. Email must stay unique, same as registration.</p>
+                <p class="text-muted">Name, email, and phone can be changed. Email must stay unique, same as registration. Phone may be repeated.</p>
                 <form method="POST" action="{{ route('admin.users.update', $user) }}">
                     @csrf
                     @method('PUT')
@@ -21,6 +21,10 @@
                     <div class="form-group">
                         <label for="email">Email</label>
                         <input id="email" class="form-control" type="email" name="email" value="{{ old('email', $user->email) }}" maxlength="100" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input id="phone" class="form-control" name="phone" value="{{ old('phone', $user->phone) }}" maxlength="20" autocomplete="tel">
                     </div>
                     <button type="submit" class="btn btn-primary">Save profile</button>
                 </form>
@@ -55,8 +59,6 @@
                 <dl class="m-b-none cmc-readonly-dl">
                     <dt>Customer ID</dt>
                     <dd>{{ $user->id }}</dd>
-                    <dt>Phone</dt>
-                    <dd>{{ $user->phone ?: '—' }}</dd>
                     <dt>Country</dt>
                     <dd>{{ $user->country ?: '—' }}</dd>
                     <dt>Sponsor ID</dt>

@@ -49,22 +49,23 @@ class AdminUserEditTest extends TestCase
             ->assertOk()
             ->assertSee('name="name"', false)
             ->assertSee('name="email"', false)
+            ->assertSee('name="phone"', false)
             ->assertSee((string) $this->root->id, false)
             ->assertSee('Save profile', false)
             ->assertSee('Update password', false)
-            ->assertDontSee('name="phone"', false)
             ->assertDontSee('name="current_password"', false)
             ->assertDontSee('name="package_id"', false)
             ->assertDontSee('name="sponsor_id"', false);
     }
 
-    public function test_admin_can_update_name_and_email(): void
+    public function test_admin_can_update_name_email_and_phone(): void
     {
         $this->actingAs($this->admin)
             ->from(route('admin.users.edit', $this->root))
             ->put(route('admin.users.update', $this->root), [
                 'name' => 'Updated Root',
                 'email' => 'updated-root@citymaxcrypto.com',
+                'phone' => '9876543210',
             ])
             ->assertRedirect()
             ->assertSessionHas('success');
@@ -73,7 +74,7 @@ class AdminUserEditTest extends TestCase
             'id' => $this->root->id,
             'name' => 'Updated Root',
             'email' => 'updated-root@citymaxcrypto.com',
-            'phone' => $this->root->phone,
+            'phone' => '9876543210',
             'package_id' => $this->root->package_id,
             'wallet_balance' => '200.00',
         ]);
@@ -85,6 +86,7 @@ class AdminUserEditTest extends TestCase
             ->put(route('admin.users.update', $this->root), [
                 'name' => 'Same Email Root',
                 'email' => $this->root->email,
+                'phone' => $this->root->phone,
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
@@ -110,6 +112,7 @@ class AdminUserEditTest extends TestCase
             ->put(route('admin.users.update', $this->root), [
                 'name' => $this->root->name,
                 'email' => 'taken@citymaxcrypto.com',
+                'phone' => $this->root->phone,
             ])
             ->assertRedirect(route('admin.users.edit', $this->root))
             ->assertSessionHasErrors('email');
@@ -134,7 +137,7 @@ class AdminUserEditTest extends TestCase
         $fresh = $this->root->fresh();
         $this->assertSame('Safe Name', $fresh->name);
         $this->assertSame('safe-name@citymaxcrypto.com', $fresh->email);
-        $this->assertNotSame('9999999999', (string) $fresh->phone);
+        $this->assertSame('9999999999', (string) $fresh->phone);
         $this->assertSame('200.00', number_format((float) $fresh->wallet_balance, 2, '.', ''));
         $this->assertSame($this->root->package_id, $fresh->package_id);
         $this->assertTrue($fresh->is_active);
@@ -147,9 +150,54 @@ class AdminUserEditTest extends TestCase
             ->put(route('admin.users.update', $this->root), [
                 'name' => '',
                 'email' => 'not-an-email',
+                'phone' => str_repeat('1', 21),
             ])
             ->assertRedirect(route('admin.users.edit', $this->root))
-            ->assertSessionHasErrors(['name', 'email']);
+            ->assertSessionHasErrors(['name', 'email', 'phone']);
+    }
+
+    public function test_duplicate_phone_is_allowed(): void
+    {
+        User::query()->create([
+            'name' => 'Other',
+            'email' => 'other-phone@citymaxcrypto.com',
+            'password' => 'Customer@123',
+            'role' => UserRole::Customer,
+            'status' => UserStatus::Active,
+            'is_active' => true,
+            'payment_status' => true,
+            'phone' => '1111111111',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.users.edit', $this->root))
+            ->put(route('admin.users.update', $this->root), [
+                'name' => $this->root->name,
+                'email' => $this->root->email,
+                'phone' => '1111111111',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success')
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('1111111111', (string) $this->root->fresh()->phone);
+    }
+
+    public function test_admin_can_clear_phone(): void
+    {
+        $this->root->forceFill(['phone' => '5555555555'])->save();
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.users.edit', $this->root))
+            ->put(route('admin.users.update', $this->root), [
+                'name' => $this->root->name,
+                'email' => $this->root->email,
+                'phone' => '',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertNull($this->root->fresh()->phone);
     }
 
     public function test_admin_can_change_customer_password_without_current_password(): void

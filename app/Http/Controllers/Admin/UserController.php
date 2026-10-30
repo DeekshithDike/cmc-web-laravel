@@ -89,6 +89,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => MemberRules::name(),
             'email' => MemberRules::email((int) $customer->id),
+            'phone' => ['nullable', 'string', 'max:20'],
         ]);
 
         $customer->fill($data)->save();
