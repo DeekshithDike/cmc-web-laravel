@@ -93,7 +93,7 @@ class CustomerDashboardSummaryTest extends TestCase
             ->assertSee('With your sponsor ID', false)
             ->assertDontSee('Quick actions', false)
             ->assertSee('id="cmc-offer-modal"', false)
-            ->assertSee('customer-assets/images/goa-offer.jpg', false)
+            ->assertSee('customer-assets/images/japan-offer.jpg', false)
             ->assertSee('aria-label="Close offer"', false)
             ->assertSee('Special Goa Offer', false);
     }
@@ -124,7 +124,7 @@ class CustomerDashboardSummaryTest extends TestCase
             ->assertDontSee('Request withdrawal', false)
             ->assertDontSee('Quick actions', false)
             ->assertDontSee('id="cmc-offer-modal"', false)
-            ->assertDontSee('goa-offer.jpg', false);
+            ->assertDontSee('japan-offer.jpg', false);
     }
 
     public function test_dashboard_does_not_show_another_customers_earnings_or_withdrawals(): void
@@ -160,12 +160,12 @@ class CustomerDashboardSummaryTest extends TestCase
 
     public function test_customer_tree_does_not_show_goa_offer_modal(): void
     {
-        $this->assertFileExists(public_path('customer-assets/images/goa-offer.jpg'));
+        $this->assertFileExists(public_path('customer-assets/images/japan-offer.jpg'));
 
         $this->actingAs($this->root)
             ->get(route('customer.tree'))
             ->assertOk()
             ->assertDontSee('id="cmc-offer-modal"', false)
-            ->assertDontSee('goa-offer.jpg', false);
+            ->assertDontSee('japan-offer.jpg', false);
     }
 }

@@ -40,7 +40,7 @@ class CustomerLoginTest extends TestCase
             ->get(route('customer.dashboard'))
             ->assertOk()
             ->assertSee('id="cmc-offer-modal"', false)
-            ->assertSee('customer-assets/images/goa-offer.jpg', false)
+            ->assertSee('customer-assets/images/japan-offer.jpg', false)
             ->assertSee('aria-label="Close offer"', false);
     }
 

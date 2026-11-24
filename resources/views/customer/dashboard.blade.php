@@ -267,7 +267,7 @@
         <span aria-hidden="true">&times;</span>
     </button>
     <h2 id="cmc-offer-title" class="sr-only">Special Goa Offer</h2>
-    <img src="{{ asset('customer-assets/images/goa-offer.jpg') }}" alt="City Max Crypto Special Goa Offer: 14th and 15th, one night two days. Achievement period 27 October 2026 to 5 November 2026. Direct joining 2,000 USDT, fresh binary matching 7,000 USDT.">
+    <img src="{{ asset('customer-assets/images/japan-offer.jpg') }}" alt="City Max Crypto Special Goa Offer: 14th and 15th, one night two days. Achievement period 27 October 2026 to 5 November 2026. Direct joining 2,000 USDT, fresh binary matching 7,000 USDT.">
 </dialog>
 @endif
 @endsection
